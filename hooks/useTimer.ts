@@ -10,10 +10,12 @@ export function useTimer() {
   useKeepAwake(isActive ? 'session-active' : undefined);
 
   useEffect(() => {
-    if (!isActive || isPaused || !startEpochMs) {
+    if (!isActive || !startEpochMs) {
       setElapsedMs(0);
       return;
     }
+
+    if (isPaused) return;
 
     const interval = setInterval(() => {
       const now = Date.now();
