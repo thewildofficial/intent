@@ -101,16 +101,15 @@ function ThemeSync({ themeMode }: { themeMode: 'light' | 'dark' }) {
   const Colors = useColors();
 
   useEffect(() => {
-    // Set root background color (covers the area behind safe areas)
     SystemUI.setBackgroundColorAsync(Colors.background);
 
-    // On Android, style the system navigation bar to match the app
     if (Platform.OS === 'android') {
-      NavigationBar.setBackgroundColorAsync(Colors.background);
-      NavigationBar.setBorderColorAsync(Colors.borderLight);
-      NavigationBar.setButtonStyleAsync(
-        themeMode === 'dark' ? 'light' : 'dark'
-      );
+      try {
+        NavigationBar.setBackgroundColorAsync(Colors.background);
+        NavigationBar.setButtonStyleAsync(themeMode === 'dark' ? 'light' : 'dark');
+      } catch {
+        // edge-to-edge mode doesn't support some nav bar APIs — safe to ignore
+      }
     }
   }, [Colors.background, Colors.borderLight, themeMode]);
 

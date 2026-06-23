@@ -49,7 +49,7 @@ export function DuoButton({
     secondary: Colors.secondary,
     accent: Colors.accent,
     danger: Colors.error,
-    ghost: 'transparent',
+    ghost: Colors.surfaceAlt,
   }[variant];
   const variantShadow = {
     primary: darken(Colors.primary, 0.15),
@@ -81,6 +81,7 @@ export function DuoButton({
 
   const textColor = variant === 'accent' ? Colors.textDark : Colors.white;
   const isGhost = variant === 'ghost';
+  const ghostColor = Colors.text;
 
   return (
     <View style={[styles.wrapper, fullWidth && styles.wrapperFullWidth, style]}>
@@ -90,7 +91,7 @@ export function DuoButton({
           {
             backgroundColor: isGhost ? 'transparent' : (disabled ? Colors.border : variantBg),
             borderWidth: isGhost ? 2 : 0,
-            borderColor: disabled ? Colors.border : variantBg,
+            borderColor: disabled ? Colors.border : isGhost ? ghostColor : variantBg,
             borderRadius: Radii.md,
             paddingVertical: sz.paddingV,
             paddingHorizontal: sz.paddingH,
@@ -109,7 +110,7 @@ export function DuoButton({
           {icon && <View style={styles.iconWrapper}>{icon}</View>}
           <Text
             style={[
-              { fontSize: sz.fontSize, fontWeight: '800', color: isGhost ? variantBg : textColor },
+              { fontSize: sz.fontSize, fontWeight: '800', color: isGhost ? ghostColor : textColor },
               textStyle,
             ]}
           >
