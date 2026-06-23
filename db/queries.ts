@@ -1,6 +1,11 @@
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { sessions, streaks, settings } from './schema';
-import { db } from './db';
+import { getDb } from './db';
+
+// All query functions use getDb() which returns the active connection.
+// Initially this is the module-level db from db.ts, but after
+// SQLiteProvider initializes, MigrationGate calls setActiveDb() to
+// switch to the provider's connection — ensuring a single native handle.
 
 function getDeviceTimezone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -41,11 +46,11 @@ export function getTodayDateString(): string {
 }
 
 export async function createSession(data: typeof sessions.$inferInsert) {
-  return db.insert(sessions).values(data).returning();
+  return getDb().insert(sessions).values(data).returning();
 }
 
 export async function completeSession(id: number, data: { completedAt: Date; reflectionText?: string; mood?: string }) {
-  return db.update(sessions).set(data).where(eq(sessions.id, id));
+  return getDb().update(sessions).set(data).where(eq(sessions.id, id));
 }
 
 export async function getTodaySessions() {
@@ -54,41 +59,35 @@ export async function getTodaySessions() {
 
 export async function getSessionsForDate(dateString: string) {
   const { start, end } = getLocalStartAndEnd(dateString);
-
-  return db.select().from(sessions).where(
-    and(
-      gte(sessions.startedAt, start),
-      lte(sessions.startedAt, end)
-    )
+  return getDb().select().from(sessions).where(
+    and(gte(sessions.startedAt, start), lte(sessions.startedAt, end))
   );
 }
 
 export async function getSessionsForDateRange(start: Date, end: Date) {
-  return db.select().from(sessions).where(
-    and(
-      gte(sessions.startedAt, start),
-      lte(sessions.startedAt, end)
-    )
+  return getDb().select().from(sessions).where(
+    and(gte(sessions.startedAt, start), lte(sessions.startedAt, end))
   );
 }
 
 export async function getStreak(date: string) {
-  const result = await db.select().from(streaks).where(eq(streaks.date, date));
+  const result = await getDb().select().from(streaks).where(eq(streaks.date, date));
   return result[0] ?? null;
 }
 
 export async function getAllStreaks() {
-  return db.select().from(streaks).orderBy(desc(streaks.date));
+  return getDb().select().from(streaks).orderBy(desc(streaks.date));
 }
 
 export async function recordStreak(data: typeof streaks.$inferInsert) {
-  return db.insert(streaks).values(data).onConflictDoUpdate({
+  return getDb().insert(streaks).values(data).onConflictDoUpdate({
     target: streaks.date,
     set: data,
   });
 }
 
 export async function recomputeStreaks(): Promise<void> {
+  const db = getDb();
   const rows = await db
     .select({
       date: sql<string>`strftime('%Y-%m-%d', datetime(${sessions.completedAt} / 1000, 'unixepoch', 'localtime') )`,
@@ -98,10 +97,7 @@ export async function recomputeStreaks(): Promise<void> {
     .groupBy(sql`strftime('%Y-%m-%d', datetime(${sessions.completedAt} / 1000, 'unixepoch', 'localtime'))`);
 
   const intentionalDates = new Set(rows.map((r) => r.date));
-
-  if (intentionalDates.size === 0) {
-    return;
-  }
+  if (intentionalDates.size === 0) return;
 
   const sortedIntentional = Array.from(intentionalDates).sort();
   const earliest = sortedIntentional[0];
@@ -118,9 +114,7 @@ export async function recomputeStreaks(): Promise<void> {
     } else {
       current = 0;
     }
-
     longest = Math.max(longest, current);
-
     await recordStreak({
       date,
       isIntentional: intentionalDates.has(date),
@@ -150,12 +144,12 @@ function generateDateRange(startStr: string, endStr: string): string[] {
 }
 
 export async function getSetting(key: string) {
-  const result = await db.select().from(settings).where(eq(settings.key, key));
+  const result = await getDb().select().from(settings).where(eq(settings.key, key));
   return result[0]?.value ?? null;
 }
 
 export async function setSetting(key: string, value: string) {
-  return db.insert(settings).values({ key, value }).onConflictDoUpdate({
+  return getDb().insert(settings).values({ key, value }).onConflictDoUpdate({
     target: settings.key,
     set: { value },
   });

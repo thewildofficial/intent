@@ -1,5 +1,5 @@
 import { Slot, useRouter, usePathname } from 'expo-router';
-import { SQLiteProvider } from 'expo-sqlite';
+import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
@@ -8,10 +8,11 @@ import { Component, type ReactNode } from 'react';
 import migrations from '../db/migrations/migrations';
 import { useState, useEffect } from 'react';
 import { useColors, Spacing, Typography } from '../constants/theme';
-import { useDB } from '../db/client';
+import { setActiveDb, db } from '../db/db';
 import { settings } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { db } from '../db/db';
+import { drizzle } from 'drizzle-orm/expo-sqlite';
+import * as schema from '../db/schema';
 import { useUIStore } from '../stores/uiStore';
 
 try {
@@ -27,17 +28,35 @@ try {
   console.log('Notifications not available in this environment:', e);
 }
 
+// This component bridges the SQLiteProvider context to the global db.
+// It runs inside SQLiteProvider, so useSQLiteContext() returns the
+// provider's native connection. We register it as the active db so
+// all queries in queries.ts use this single connection instead of the
+// separate one created in db.ts.
+function DbBridge({ children }: { children: React.ReactNode }) {
+  const sqlite = useSQLiteContext();
+  // Create the drizzle instance once and set it as active
+  useEffect(() => {
+    const providerDb = drizzle(sqlite, { schema });
+    setActiveDb(providerDb);
+  }, [sqlite]);
+
+  return <>{children}</>;
+}
+
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const dbCtx = useDB();
+  const sqlite = useSQLiteContext();
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const result = await dbCtx.select().from(settings).where(eq(settings.key, 'onboardingComplete'));
+        const providerDb = drizzle(sqlite, { schema });
+        setActiveDb(providerDb);
+        const result = await providerDb.select().from(settings).where(eq(settings.key, 'onboardingComplete'));
         const raw = result[0]?.value ?? null;
         const complete = raw === null ? false : raw === 'true';
         if (mounted) setOnboardingComplete(complete);
@@ -47,7 +66,7 @@ function OnboardingGate({ children }: { children: React.ReactNode }) {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [sqlite]);
 
   useEffect(() => {
     if (onboardingComplete === false && pathname !== '/onboarding') {
@@ -77,7 +96,7 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <OnboardingGate>{children}</OnboardingGate>;
+  return <DbBridge><OnboardingGate>{children}</OnboardingGate></DbBridge>;
 }
 
 interface ErrorBoundaryState {
@@ -144,36 +163,12 @@ export default function RootLayout() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loading: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingContent: { alignItems: 'center' },
   loadingText: { ...Typography.body },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.lg,
-  },
-  errorTitle: {
-    ...Typography.title,
-    marginBottom: Spacing.sm,
-    textAlign: 'center',
-  },
-  errorMessage: {
-    ...Typography.body,
-    textAlign: 'center',
-    marginBottom: Spacing.xl,
-  },
-  errorButton: {
-    borderRadius: 12,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-  },
-  errorButtonText: {
-    ...Typography.subtitle,
-    fontWeight: '600',
-  },
+  errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.lg },
+  errorTitle: { ...Typography.title, marginBottom: Spacing.sm, textAlign: 'center' },
+  errorMessage: { ...Typography.body, textAlign: 'center', marginBottom: Spacing.xl },
+  errorButton: { borderRadius: 12, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl },
+  errorButtonText: { ...Typography.subtitle, fontWeight: '600' },
 });
