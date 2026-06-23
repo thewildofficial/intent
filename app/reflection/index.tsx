@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
-import { createSession, completeSession } from '../../db/queries';
+import { createSession, recomputeStreaks } from '../../db/queries';
+import { useNotifications } from '../../hooks/useNotifications';
 
 const MOODS = [
   { label: 'Great', emoji: '🙂' },
@@ -17,12 +18,13 @@ export default function ReflectionScreen() {
   const { intent, duration, startEpochMs, reset } = useSessionStore();
   const [reflection, setReflection] = useState('');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const { scheduleSessionComplete } = useNotifications();
 
   const handleComplete = async () => {
     if (!startEpochMs) return;
 
     const now = new Date();
-    const session = await createSession({
+    await createSession({
       intentText: intent,
       durationMin: duration,
       startedAt: new Date(startEpochMs),
@@ -32,6 +34,9 @@ export default function ReflectionScreen() {
       mood: selectedMood,
       createdAt: now,
     });
+
+    await recomputeStreaks();
+    await scheduleSessionComplete();
 
     reset();
     router.replace('/(tabs)');

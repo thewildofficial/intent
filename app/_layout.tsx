@@ -3,9 +3,19 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
+import * as Notifications from 'expo-notifications';
 import migrations from '../db/migrations/migrations';
 import { db } from '../db/db';
 import { useState, useEffect } from 'react';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+  }),
+});
 
 function MigrationGate({ children }: { children: React.ReactNode }) {
   const { success, error } = useMigrations(db, migrations);

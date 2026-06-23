@@ -1,8 +1,45 @@
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { sessions, streaks, settings } from './schema';
 import { db } from './db';
 
-// Session queries
+function getDeviceTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+function getLocalDateParts(d: Date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+} {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: getDeviceTimezone(),
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(d);
+
+  const get = (type: string) =>
+    parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10);
+
+  return { year: get('year'), month: get('month'), day: get('day') };
+}
+
+export function getLocalDateString(d: Date = new Date()): string {
+  const { year, month, day } = getLocalDateParts(d);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export function getLocalStartAndEnd(dateString: string): { start: Date; end: Date } {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, day));
+  const end = new Date(Date.UTC(year, month - 1, day + 1) - 1);
+  return { start, end };
+}
+
+export function getTodayDateString(): string {
+  return getLocalDateString(new Date());
+}
+
 export async function createSession(data: typeof sessions.$inferInsert) {
   return db.insert(sessions).values(data).returning();
 }
@@ -12,14 +49,16 @@ export async function completeSession(id: number, data: { completedAt: Date; ref
 }
 
 export async function getTodaySessions() {
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
-  
+  return getSessionsForDate(getTodayDateString());
+}
+
+export async function getSessionsForDate(dateString: string) {
+  const { start, end } = getLocalStartAndEnd(dateString);
+
   return db.select().from(sessions).where(
     and(
-      gte(sessions.startedAt, startOfDay),
-      lte(sessions.startedAt, endOfDay)
+      gte(sessions.startedAt, start),
+      lte(sessions.startedAt, end)
     )
   );
 }
@@ -33,9 +72,13 @@ export async function getSessionsForDateRange(start: Date, end: Date) {
   );
 }
 
-// Streak queries
 export async function getStreak(date: string) {
-  return db.select().from(streaks).where(eq(streaks.date, date));
+  const result = await db.select().from(streaks).where(eq(streaks.date, date));
+  return result[0] ?? null;
+}
+
+export async function getAllStreaks() {
+  return db.select().from(streaks).orderBy(desc(streaks.date));
 }
 
 export async function recordStreak(data: typeof streaks.$inferInsert) {
@@ -45,7 +88,67 @@ export async function recordStreak(data: typeof streaks.$inferInsert) {
   });
 }
 
-// Settings queries
+export async function recomputeStreaks(): Promise<void> {
+  const rows = await db
+    .select({
+      date: sql<string>`strftime('%Y-%m-%d', datetime(${sessions.completedAt} / 1000, 'unixepoch', 'localtime') )`,
+    })
+    .from(sessions)
+    .where(sql`${sessions.completedAt} IS NOT NULL`)
+    .groupBy(sql`date`);
+
+  const intentionalDates = new Set(rows.map((r) => r.date));
+
+  if (intentionalDates.size === 0) {
+    return;
+  }
+
+  const sortedIntentional = Array.from(intentionalDates).sort();
+  const earliest = sortedIntentional[0];
+  const today = getTodayDateString();
+  const dateList = generateDateRange(earliest, today);
+
+  let current = 0;
+  let longest = 0;
+  const nowMs = Date.now();
+
+  for (const date of dateList) {
+    if (intentionalDates.has(date)) {
+      current += 1;
+    } else {
+      current = 0;
+    }
+
+    longest = Math.max(longest, current);
+
+    await recordStreak({
+      date,
+      isIntentional: intentionalDates.has(date),
+      currentStreakCount: current,
+      longestStreakCount: longest,
+      updatedAt: new Date(nowMs),
+    });
+  }
+}
+
+function generateDateRange(startStr: string, endStr: string): string[] {
+  const result: string[] = [];
+  const [sYear, sMonth, sDay] = startStr.split('-').map(Number);
+  const [eYear, eMonth, eDay] = endStr.split('-').map(Number);
+
+  let cursor = new Date(Date.UTC(sYear, sMonth - 1, sDay));
+  const end = new Date(Date.UTC(eYear, eMonth - 1, eDay));
+
+  while (cursor <= end) {
+    result.push(
+      `${cursor.getUTCFullYear()}-${String(cursor.getUTCMonth() + 1).padStart(2, '0')}-${String(cursor.getUTCDate()).padStart(2, '0')}`
+    );
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+  }
+
+  return result;
+}
+
 export async function getSetting(key: string) {
   const result = await db.select().from(settings).where(eq(settings.key, key));
   return result[0]?.value ?? null;
@@ -56,4 +159,14 @@ export async function setSetting(key: string, value: string) {
     target: settings.key,
     set: { value },
   });
+}
+
+export async function getBooleanSetting(key: string, defaultValue = false): Promise<boolean> {
+  const raw = await getSetting(key);
+  if (raw === null) return defaultValue;
+  return raw === 'true';
+}
+
+export async function setBooleanSetting(key: string, value: boolean) {
+  return setSetting(key, value ? 'true' : 'false');
 }
