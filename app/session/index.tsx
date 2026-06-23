@@ -1,19 +1,23 @@
-import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useColors, Spacing, Radii } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useTimer } from '../../hooks/useTimer';
 import { ProgressRing } from '../../components/ProgressRing';
 import { buttonPress, completeSession } from '../../utils/haptics';
-import { useEffect, useMemo } from 'react';
-import { PauseIcon, PlayIcon, PlusIcon, FlagIcon, TargetIcon } from '../../components/Icons';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { PauseIcon, PlayIcon, PlusIcon, FlagIcon, TargetIcon, PencilIcon } from '../../components/Icons';
 
 export default function SessionScreen() {
   const Colors = useColors();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const { intent, duration, pauseSession, resumeSession, finishSession, isPaused, startSession } = useSessionStore();
+  const { intent, duration, setIntent, pauseSession, resumeSession, finishSession, isPaused, startSession } = useSessionStore();
   const { formattedRemaining, isComplete, remainingMs } = useTimer();
+
+  const [editingIntent, setEditingIntent] = useState(false);
+  const [intentDraft, setIntentDraft] = useState(intent);
+  const intentInputRef = useRef<TextInput>(null);
 
   useEffect(() => { startSession(); }, []);
 
@@ -50,6 +54,17 @@ export default function SessionScreen() {
     useSessionStore.setState({ duration: currentDuration + 5 });
   };
 
+  const handleIntentEdit = () => {
+    setIntentDraft(intent);
+    setEditingIntent(true);
+  };
+
+  const handleIntentSave = () => {
+    const trimmed = intentDraft.trim();
+    if (trimmed) setIntent(trimmed);
+    setEditingIntent(false);
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: Colors.background }]}>
       <View style={styles.intentSection}>
@@ -57,7 +72,25 @@ export default function SessionScreen() {
           <TargetIcon size={18} color={Colors.primary} strokeWidth={2} />
           <Text style={[styles.intentLabel, { color: Colors.textMuted }]}>YOUR INTENTION</Text>
         </View>
-        <Text style={[styles.intentText, { color: Colors.text }]}>{intent}</Text>
+        {editingIntent ? (
+          <TextInput
+            ref={intentInputRef}
+            style={[styles.intentInput, { color: Colors.text, borderBottomColor: Colors.primary }]}
+            value={intentDraft}
+            onChangeText={setIntentDraft}
+            onBlur={handleIntentSave}
+            onSubmitEditing={handleIntentSave}
+            autoFocus
+            multiline
+            maxLength={200}
+            textAlign="center"
+          />
+        ) : (
+          <TouchableOpacity onPress={handleIntentEdit} activeOpacity={0.7} style={styles.intentDisplay}>
+            <Text style={[styles.intentText, { color: Colors.text }]}>{intent}</Text>
+            <PencilIcon size={16} color={Colors.textMuted} strokeWidth={2} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.timerWrapper}>
@@ -104,7 +137,9 @@ const styles = StyleSheet.create({
   intentSection: { alignItems: 'center', marginTop: Spacing.xxl },
   intentLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   intentLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  intentText: { fontSize: 20, fontWeight: '700', textAlign: 'center', maxWidth: 280 },
+  intentDisplay: { flexDirection: 'row', alignItems: 'center', gap: 8, maxWidth: 300 },
+  intentText: { fontSize: 20, fontWeight: '700', textAlign: 'center', flexShrink: 1 },
+  intentInput: { fontSize: 20, fontWeight: '700', textAlign: 'center', maxWidth: 300, borderBottomWidth: 2, paddingVertical: 4, paddingHorizontal: 8 },
   timerWrapper: { alignItems: 'center', justifyContent: 'center' },
   timerContainer: { position: 'absolute', alignItems: 'center' },
   timer: { fontSize: 64, fontWeight: '900', fontVariant: ['tabular-nums'] },

@@ -300,3 +300,13 @@ export function LockIcon({ size = 24, color = Colors.text, strokeWidth = 2 }: Ic
     </IconWrap>
   );
 }
+
+// Pencil — edit
+export function PencilIcon({ size = 24, color = Colors.text, strokeWidth = 2 }: IconProps) {
+  return (
+    <IconWrap size={size} color={color} strokeWidth={strokeWidth}>
+      <Path d="M14.5 4.5L19.5 9.5L8 21H3v-5L14.5 4.5Z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Path d="M12.5 6.5L17.5 11.5" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </IconWrap>
+  );
+}

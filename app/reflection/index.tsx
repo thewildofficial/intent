@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import Animated, {
@@ -6,48 +6,81 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withTiming,
+  withRepeat,
+  withSequence,
+  withDelay,
   useReducedMotion,
 } from 'react-native-reanimated';
 import { useColors, Spacing, Radii } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
-import { createSession, recomputeStreaks } from '../../db/queries';
+import { createSession, recomputeStreaks, getStreak, getTodayDateString } from '../../db/queries';
 import { useNotifications } from '../../hooks/useNotifications';
 import { streakIncrement, buttonPress } from '../../utils/haptics';
 import { DuoButton } from '../../components/DuoButton';
-import { HeartIcon, SmileIcon, MehIcon, ToughIcon, CheckIcon, ArrowLeftIcon } from '../../components/Icons';
-
-const MOODS = [
-  { label: 'Great',   value: 'great',   Icon: HeartIcon,  colorKey: 'moodGreat' },
-  { label: 'Good',    value: 'good',    Icon: SmileIcon,  colorKey: 'moodGood' },
-  { label: 'Neutral', value: 'neutral', Icon: MehIcon,    colorKey: 'moodNeutral' },
-  { label: 'Hard',    value: 'hard',    Icon: ToughIcon,  colorKey: 'moodHard' },
-] as const;
+import { Confetti } from '../../components/Confetti';
+import { CheckIcon, FireIcon, TargetIcon } from '../../components/Icons';
 
 export default function ReflectionScreen() {
   const Colors = useColors();
   const router = useRouter();
-  const { intent, duration, startEpochMs, reset } = useSessionStore();
+  const { intent, duration, startEpochMs, reset, startSession } = useSessionStore();
   const [reflection, setReflection] = useState('');
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [streakCount, setStreakCount] = useState(0);
   const { scheduleSessionComplete } = useNotifications();
   const reduceMotion = useReducedMotion();
 
+  const [fire, setFire] = useState(false);
   const titleScale = useSharedValue(0.92);
   const titleOpacity = useSharedValue(0);
+  const flameScale = useSharedValue(1);
+  const flameOpacity = useSharedValue(0);
+  const checkScale = useSharedValue(0);
 
   useEffect(() => {
+    setFire(true);
     titleOpacity.value = withTiming(1, { duration: reduceMotion ? 0 : 500 });
     titleScale.value = withSpring(1, { damping: 12, stiffness: 200 });
-  }, [reduceMotion]);
+    checkScale.value = withSpring(1, { damping: 10, stiffness: 250 });
+    flameOpacity.value = withDelay(400, withTiming(1, { duration: 300 }));
+
+    if (!reduceMotion) {
+      flameScale.value = withDelay(
+        400,
+        withRepeat(
+          withSequence(
+            withSpring(1.18, { damping: 8, stiffness: 120 }),
+            withSpring(1, { damping: 12, stiffness: 150 }),
+          ),
+          -1,
+        ),
+      );
+    } else {
+      flameScale.value = 1;
+    }
+
+    (async () => {
+      await recomputeStreaks();
+      const todayRow = await getStreak(getTodayDateString());
+      setStreakCount(todayRow?.currentStreakCount ?? 0);
+    })();
+  }, []);
 
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
     transform: [{ scale: titleScale.value }],
   }));
 
-  const handleComplete = async () => {
+  const checkStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: checkScale.value }],
+  }));
+
+  const flameStyle = useAnimatedStyle(() => ({
+    opacity: flameOpacity.value,
+    transform: [{ scale: flameScale.value }],
+  }));
+
+  const saveSession = async () => {
     if (!startEpochMs) return;
-    await buttonPress();
     const now = new Date();
     await createSession({
       intentText: intent,
@@ -56,86 +89,107 @@ export default function ReflectionScreen() {
       completedAt: now,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       reflectionText: reflection.trim() || null,
-      mood: selectedMood,
+      mood: null,
       createdAt: now,
     });
     await recomputeStreaks();
     await streakIncrement();
     await scheduleSessionComplete();
+  };
+
+  const handleContinue = async () => {
+    await buttonPress();
+    await saveSession();
+    startSession();
+    router.replace('/session');
+  };
+
+  const handleFinish = async () => {
+    await buttonPress();
+    await saveSession();
     reset();
     router.replace('/(tabs)');
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
-      <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: Colors.surfaceAlt }]}>
-        <ArrowLeftIcon size={28} color={Colors.text} />
-      </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+      <Confetti fire={fire} count={35} />
 
-      <Animated.View style={[styles.header, titleStyle]}>
-        <View style={[styles.checkCircle, { backgroundColor: Colors.primary + '15' }]}>
-          <CheckIcon size={48} color={Colors.primary} />
-        </View>
-        <Text style={[styles.title, { color: Colors.text }]}>Session Complete!</Text>
-        <Text style={[styles.subtitle, { color: Colors.textLight }]}>You focused for {duration} minutes</Text>
-      </Animated.View>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Animated.View style={[styles.header, titleStyle]}>
+          <Animated.View style={[styles.checkCircle, { backgroundColor: Colors.primary + '15' }, checkStyle]}>
+            <CheckIcon size={48} color={Colors.primary} />
+          </Animated.View>
+          <Text style={[styles.title, { color: Colors.text }]}>Session Complete!</Text>
+          <Text style={[styles.subtitle, { color: Colors.textLight }]}>
+            You focused for {duration} minutes
+          </Text>
 
-      <Text style={[styles.sectionLabel, { color: Colors.textMuted }]}>WHAT DID YOU ACCOMPLISH?</Text>
-      <TextInput
-        style={[styles.input, { color: Colors.text, backgroundColor: Colors.cardBg, borderColor: Colors.borderLight }]}
-        placeholder="Type bullet points..."
-        placeholderTextColor={Colors.textMuted}
-        value={reflection}
-        onChangeText={setReflection}
-        multiline
-        maxLength={500}
-      />
-
-      <Text style={[styles.sectionLabel, { color: Colors.textMuted }]}>HOW DID IT FEEL?</Text>
-      <View style={styles.moodsRow}>
-        {MOODS.map((mood) => {
-          const Icon = mood.Icon;
-          const isSelected = selectedMood === mood.value;
-          const moodColor = Colors[mood.colorKey];
-          return (
-            <TouchableOpacity
-              key={mood.value}
-              style={[
-                styles.moodButton,
-                { backgroundColor: Colors.cardBg, borderColor: Colors.borderLight },
-                isSelected && { borderColor: moodColor, backgroundColor: moodColor + '15' },
-              ]}
-              onPress={() => setSelectedMood(mood.value)}
-              activeOpacity={0.7}
-            >
-              <Icon size={36} />
-              <Text style={[styles.moodLabel, { color: Colors.text }, isSelected && { color: moodColor }]}>
-                {mood.label}
+          {streakCount > 0 && (
+            <Animated.View style={[styles.streakBadge, { backgroundColor: Colors.flame + '15' }, flameStyle]}>
+              <FireIcon size={20} color={Colors.flame} />
+              <Text style={[styles.streakText, { color: Colors.flame }]}>
+                {streakCount} day{streakCount === 1 ? '' : 's'}
               </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+            </Animated.View>
+          )}
+        </Animated.View>
 
-      <View style={styles.footer}>
-        <DuoButton label="COMPLETE SESSION" onPress={handleComplete} fullWidth size="lg" variant="primary" />
-      </View>
-    </ScrollView>
+        <View style={[styles.intentionCard, { backgroundColor: Colors.cardBg, borderColor: Colors.borderLight }]}>
+          <View style={styles.intentionLabelRow}>
+            <TargetIcon size={16} color={Colors.primary} strokeWidth={2} />
+            <Text style={[styles.intentionLabel, { color: Colors.textMuted }]}>YOUR INTENTION</Text>
+          </View>
+          <Text style={[styles.intentionText, { color: Colors.text }]}>{intent}</Text>
+        </View>
+
+        <Text style={[styles.sectionLabel, { color: Colors.textMuted }]}>WHAT HAPPENED?</Text>
+        <TextInput
+          style={[styles.input, { color: Colors.text, backgroundColor: Colors.cardBg, borderColor: Colors.borderLight }]}
+          placeholder="Type bullet points..."
+          placeholderTextColor={Colors.textMuted}
+          value={reflection}
+          onChangeText={setReflection}
+          multiline
+          maxLength={500}
+        />
+
+        <View style={styles.footer}>
+          <DuoButton
+            label={`Continue ${duration}m`}
+            onPress={handleContinue}
+            fullWidth
+            size="lg"
+            variant="primary"
+          />
+          <DuoButton
+            label="Finish"
+            onPress={handleFinish}
+            fullWidth
+            size="md"
+            variant="ghost"
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  scroll: { flex: 1 },
   content: { padding: Spacing.lg, paddingBottom: Spacing.xxxl },
-  backButton: { marginTop: Spacing.xl, marginBottom: Spacing.md, width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   header: { alignItems: 'center', marginBottom: Spacing.xl },
   checkCircle: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   title: { fontSize: 28, fontWeight: '900' },
   subtitle: { fontSize: 15, fontWeight: '500', marginTop: 4 },
+  streakBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radii.pill },
+  streakText: { fontSize: 14, fontWeight: '800' },
+  intentionCard: { borderWidth: 2, borderRadius: Radii.md, padding: Spacing.md, marginBottom: Spacing.xl },
+  intentionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  intentionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
+  intentionText: { fontSize: 17, fontWeight: '700', lineHeight: 22 },
   sectionLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
   input: { fontSize: 16, fontWeight: '500', borderWidth: 2, borderRadius: Radii.md, padding: Spacing.md, minHeight: 120, textAlignVertical: 'top', marginBottom: Spacing.xl },
-  moodsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.xl, gap: 8 },
-  moodButton: { flex: 1, alignItems: 'center', padding: 14, borderRadius: Radii.md, borderWidth: 2 },
-  moodLabel: { fontSize: 13, fontWeight: '700', marginTop: 8 },
-  footer: { marginTop: Spacing.lg },
+  footer: { gap: 10, marginTop: Spacing.md },
 });
