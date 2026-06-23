@@ -1,8 +1,8 @@
 import { useUIStore } from '../stores/uiStore';
 
 // ─────────────────────────────────────────────────────────────
-// Intent — Duolingo-inspired Playful Design System
-// Light + Dark mode support via Zustand-driven palette
+// Intent — Original design system
+// Light purple primary, rose gold accent, warm neutrals
 // ─────────────────────────────────────────────────────────────
 
 export interface ColorPalette {
@@ -50,90 +50,103 @@ export interface ColorPalette {
 
 // ─── Light palette ─────────────────────────────────────────────
 const lightColors: ColorPalette = {
-  primary: '#58CC02',
-  primaryDark: '#4FA90E',
-  primaryLight: '#89E219',
-  secondary: '#1CB0F6',
-  secondaryDark: '#1899D6',
-  accent: '#FFD93D',
-  accentDark: '#E6C100',
+  // Soft lavender purple — the app's signature
+  primary: '#8B5CF6',
+  primaryDark: '#7C3AED',
+  primaryLight: '#A78BFA',
 
-  success: '#58CC02',
-  warning: '#FF9600',
-  error: '#FF4B4B',
-  errorDark: '#E04545',
+  // Rose gold — warm, elegant accent
+  secondary: '#E8A098',
+  secondaryDark: '#D4857A',
 
-  flame: '#FF6B35',
-  flameDark: '#E55A2B',
+  // Rose gold deeper tone for accents/awards
+  accent: '#D4A574',
+  accentDark: '#B8860B',
 
-  background: '#FFFFFF',
-  surface: '#F7F7F7',
-  surfaceAlt: '#F0F0F0',
+  success: '#8B5CF6',
+  warning: '#F59E0B',
+  error: '#EF4444',
+  errorDark: '#DC2626',
+
+  // Warm flame for streaks
+  flame: '#F97316',
+  flameDark: '#EA580C',
+
+  background: '#FAF8F5',
+  surface: '#F3F0EB',
+  surfaceAlt: '#ECE7DF',
   cardBg: '#FFFFFF',
 
-  text: '#3C3C3C',
+  text: '#2D2A26',
   textDark: '#1A1A1A',
-  textLight: '#777777',
-  textMuted: '#A0A0A0',
+  textLight: '#8B8580',
+  textMuted: '#B5AFA8',
   white: '#FFFFFF',
 
-  border: '#E5E5E5',
-  borderLight: '#F0F0F0',
+  border: '#E5E0D8',
+  borderLight: '#EDE9E2',
 
-  moodGreat: '#58CC02',
-  moodGood: '#1CB0F6',
-  moodNeutral: '#FFD93D',
-  moodHard: '#FF9600',
+  moodGreat: '#8B5CF6',
+  moodGood: '#D4A574',
+  moodNeutral: '#F59E0B',
+  moodHard: '#EF4444',
 
-  heat0: '#E5E5E5',
-  heat1: '#C7E5A0',
-  heat2: '#A0D860',
-  heat3: '#7AC02E',
-  heat4: '#58CC02',
+  // Heat scale: warm cream → rose gold
+  heat0: '#ECE7DF',
+  heat1: '#F5DDD5',
+  heat2: '#EDC6BA',
+  heat3: '#E0A898',
+  heat4: '#D4857A',
 };
 
 // ─── Dark palette ──────────────────────────────────────────────
 const darkColors: ColorPalette = {
-  primary: '#7AD830',
-  primaryDark: '#58CC02',
-  primaryLight: '#89E219',
-  secondary: '#3BC4FF',
-  secondaryDark: '#1CB0F6',
-  accent: '#FFE04D',
-  accentDark: '#FFD93D',
+  // Slightly brighter purple for dark mode contrast
+  primary: '#A78BFA',
+  primaryDark: '#8B5CF6',
+  primaryLight: '#C4B5FD',
 
-  success: '#7AD830',
-  warning: '#FFB020',
-  error: '#FF6B6B',
-  errorDark: '#FF4B4B',
+  // Rose gold — warmer in dark
+  secondary: '#F0A89E',
+  secondaryDark: '#E8A098',
 
-  flame: '#FF8855',
-  flameDark: '#FF6B35',
+  accent: '#E0BC8A',
+  accentDark: '#D4A574',
 
-  background: '#131F2B',
-  surface: '#1B2A3A',
-  surfaceAlt: '#243444',
-  cardBg: '#1B2A3A',
+  success: '#A78BFA',
+  warning: '#FBBF24',
+  error: '#F87171',
+  errorDark: '#EF4444',
 
-  text: '#F0F4F8',
+  flame: '#FB923C',
+  flameDark: '#F97316',
+
+  // Deep warm charcoal — not pure black, warm undertone
+  background: '#1A1720',
+  surface: '#252130',
+  surfaceAlt: '#322D3F',
+  cardBg: '#252130',
+
+  text: '#F0EDE8',
   textDark: '#FFFFFF',
-  textLight: '#9DB2C8',
-  textMuted: '#6B7F94',
+  textLight: '#A8A29E',
+  textMuted: '#6B6760',
   white: '#FFFFFF',
 
-  border: '#2D4054',
-  borderLight: '#243444',
+  border: '#3F3A4D',
+  borderLight: '#322D3F',
 
-  moodGreat: '#7AD830',
-  moodGood: '#3BC4FF',
-  moodNeutral: '#FFE04D',
-  moodHard: '#FFB020',
+  moodGreat: '#A78BFA',
+  moodGood: '#E0BC8A',
+  moodNeutral: '#FBBF24',
+  moodHard: '#F87171',
 
-  heat0: '#243444',
-  heat1: '#2A4A22',
-  heat2: '#3A6B2E',
-  heat3: '#4F9038',
-  heat4: '#7AD830',
+  // Heat scale: muted purple → bright rose gold
+  heat0: '#322D3F',
+  heat1: '#4A3D52',
+  heat2: '#5D4555',
+  heat3: '#7D5560',
+  heat4: '#B07060',
 };
 
 // ─── Hook: returns the active color palette ─────────────────────
@@ -144,6 +157,8 @@ export function useColors(): ColorPalette {
 
 // Static fallback (for non-component contexts)
 export const Colors = lightColors;
+
+export { lightColors, darkColors };
 
 export const Spacing = {
   xs: 4,
@@ -177,14 +192,14 @@ export const Shadows = {
     elevation: 4,
   },
   buttonPrimary: {
-    shadowColor: '#4FA90E',
+    shadowColor: '#7C3AED',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
   },
   buttonSecondary: {
-    shadowColor: '#1899D6',
+    shadowColor: '#D4857A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,

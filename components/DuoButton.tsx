@@ -82,7 +82,7 @@ export function DuoButton({
   const isGhost = variant === 'ghost';
 
   return (
-    <View style={[styles.wrapper, fullWidth && { width: '100%' }, style]}>
+    <View style={[styles.wrapper, fullWidth && { width: '100%' }, style, { paddingBottom: 4 }]}>
       {/* Bottom 3D edge — a thin strip peeking out below the button */}
       {!isGhost && !disabled && (
         <Animated.View
@@ -90,7 +90,8 @@ export function DuoButton({
             styles.bottomEdge,
             {
               backgroundColor: variantShadow,
-              borderRadius: Radii.md,
+              borderBottomLeftRadius: Radii.md,
+              borderBottomRightRadius: Radii.md,
             },
             edgeStyle,
           ]}

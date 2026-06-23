@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useColors, Spacing, Radii } from '../../constants/theme';
@@ -32,7 +32,11 @@ export default function IntentScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: Colors.background }]}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: Colors.background }}
+      behavior={Platform.OS === 'android' ? undefined : 'padding'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, { backgroundColor: Colors.surfaceAlt }]}>
           <ArrowLeftIcon size={28} color={Colors.text} />
@@ -56,54 +60,56 @@ export default function IntentScreen() {
           onChangeText={setText}
           multiline
           maxLength={100}
-          autoFocus
         />
         <Text style={[styles.charCount, { color: Colors.textMuted }]}>{text.length}/100</Text>
       </View>
 
       <Text style={[styles.chipsTitle, { color: Colors.textMuted }]}>QUICK PICK</Text>
-      <View style={styles.chipsContainer}>
-        {EXAMPLE_INTENTS.map((item) => (
-          <TouchableOpacity
-            key={item.label}
-            style={[
-              styles.chip,
-              { backgroundColor: Colors.cardBg, borderColor: Colors.borderLight },
-              text === item.label && { borderColor: Colors.primary, backgroundColor: Colors.primary + '12' },
-            ]}
-            onPress={() => setText(item.label)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.chipEmoji}>{item.emoji}</Text>
-            <Text style={[styles.chipText, { color: Colors.text }, text === item.label && { color: Colors.primary, fontWeight: '700' }]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView style={styles.chipsScroll} contentContainerStyle={styles.chipsContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.chipsGrid}>
+          {EXAMPLE_INTENTS.map((item) => (
+            <TouchableOpacity
+              key={item.label}
+              style={[
+                styles.chip,
+                { backgroundColor: Colors.cardBg, borderColor: Colors.borderLight },
+                text === item.label && { borderColor: Colors.primary, backgroundColor: Colors.primary + '12' },
+              ]}
+              onPress={() => setText(item.label)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.chipEmoji}>{item.emoji}</Text>
+              <Text style={[styles.chipText, { color: Colors.text }, text === item.label && { color: Colors.primary, fontWeight: '700' }]}>
+                {item.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <DuoButton label="CONTINUE" onPress={handleContinue} fullWidth size="lg" disabled={!text.trim()} variant="primary" />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: Spacing.lg },
-  header: { marginTop: Spacing.xl, marginBottom: Spacing.md },
+  header: { paddingHorizontal: Spacing.lg, paddingTop: Spacing.xl, marginBottom: Spacing.md },
   backButton: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  titleSection: { marginBottom: Spacing.xl },
+  titleSection: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { fontSize: 26, fontWeight: '900' },
   subtitle: { fontSize: 15, fontWeight: '500', marginTop: 4, marginLeft: 36 },
-  inputWrapper: { position: 'relative', marginBottom: Spacing.lg },
+  inputWrapper: { position: 'relative', marginHorizontal: Spacing.lg, marginBottom: Spacing.lg },
   input: { fontSize: 18, fontWeight: '600', borderWidth: 2, borderRadius: Radii.md, padding: Spacing.md, minHeight: 80, textAlignVertical: 'top' },
   charCount: { position: 'absolute', bottom: 8, right: 12, fontSize: 12, fontWeight: '500' },
-  chipsTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
-  chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },
+  chipsTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12, marginHorizontal: Spacing.lg },
+  chipsScroll: { flex: 1, marginHorizontal: Spacing.lg },
+  chipsContainer: { paddingBottom: Spacing.md },
+  chipsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 2, borderRadius: Radii.pill },
   chipEmoji: { fontSize: 18 },
   chipText: { fontSize: 14, fontWeight: '600' },
-  footer: { paddingBottom: Spacing.lg },
+  footer: { padding: Spacing.lg },
 });

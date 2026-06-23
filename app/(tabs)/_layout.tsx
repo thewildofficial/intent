@@ -1,4 +1,6 @@
 import { Tabs } from 'expo-router';
+import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../constants/theme';
 import { HomeIcon, ReviewIcon, CalendarIcon, SettingsIcon } from '../../components/Icons';
 import type { IconProps } from '../../components/Icons';
@@ -9,6 +11,7 @@ function TabIcon({ Icon, focused, color }: { Icon: React.FC<IconProps>; focused:
 
 export default function TabLayout() {
   const Colors = useColors();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
@@ -18,8 +21,8 @@ export default function TabLayout() {
           backgroundColor: Colors.background,
           borderTopWidth: 2,
           borderTopColor: Colors.borderLight,
-          height: 64,
-          paddingBottom: 8,
+          height: 64 + (Platform.OS === 'android' ? Math.max(insets.bottom, 0) : 0),
+          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 0) : 8,
           paddingTop: 6,
         },
         tabBarActiveTintColor: Colors.primary,

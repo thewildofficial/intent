@@ -22,7 +22,7 @@
       "package": "com.intent.app",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FAF8F5",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -31,7 +31,8 @@
         "VIBRATE",
         "RECEIVE_BOOT_COMPLETED"
       ],
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,10 +40,12 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
+      "expo-navigation-bar",
+      "expo-system-ui",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFDF7",
+          "backgroundColor": "#FAF8F5",
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain"

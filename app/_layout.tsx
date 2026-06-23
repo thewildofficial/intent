@@ -1,13 +1,15 @@
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { SQLiteProvider, useSQLiteContext } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import * as Notifications from 'expo-notifications';
+import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
 import { Component, type ReactNode } from 'react';
 import migrations from '../db/migrations/migrations';
 import { useState, useEffect } from 'react';
-import { useColors, Spacing, Typography } from '../constants/theme';
+import { useColors, Spacing, Typography, lightColors, darkColors } from '../constants/theme';
 import { setActiveDb, db } from '../db/db';
 import { settings } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -29,13 +31,8 @@ try {
 }
 
 // This component bridges the SQLiteProvider context to the global db.
-// It runs inside SQLiteProvider, so useSQLiteContext() returns the
-// provider's native connection. We register it as the active db so
-// all queries in queries.ts use this single connection instead of the
-// separate one created in db.ts.
 function DbBridge({ children }: { children: React.ReactNode }) {
   const sqlite = useSQLiteContext();
-  // Create the drizzle instance once and set it as active
   useEffect(() => {
     const providerDb = drizzle(sqlite, { schema });
     setActiveDb(providerDb);
@@ -99,6 +96,27 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
   return <DbBridge><OnboardingGate>{children}</OnboardingGate></DbBridge>;
 }
 
+// Syncs the Android system nav bar + root background with the active theme.
+function ThemeSync({ themeMode }: { themeMode: 'light' | 'dark' }) {
+  const Colors = useColors();
+
+  useEffect(() => {
+    // Set root background color (covers the area behind safe areas)
+    SystemUI.setBackgroundColorAsync(Colors.background);
+
+    // On Android, style the system navigation bar to match the app
+    if (Platform.OS === 'android') {
+      NavigationBar.setBackgroundColorAsync(Colors.background);
+      NavigationBar.setBorderColorAsync(Colors.borderLight);
+      NavigationBar.setButtonStyleAsync(
+        themeMode === 'dark' ? 'light' : 'dark'
+      );
+    }
+  }, [Colors.background, Colors.borderLight, themeMode]);
+
+  return null;
+}
+
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
@@ -146,12 +164,14 @@ function ErrorScreen({ error, onRetry }: { error: Error | null; onRetry: () => v
 
 export default function RootLayout() {
   const themeMode = useUIStore((s) => s.themeMode);
+  const bg = themeMode === 'dark' ? darkColors.background : lightColors.background;
 
   return (
     <ErrorBoundary>
       <SQLiteProvider databaseName="intent.db">
+        <ThemeSync themeMode={themeMode} />
         <MigrationGate>
-          <View style={styles.container}>
+          <View style={[styles.container, { backgroundColor: bg }]}>
             <Slot />
             <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
           </View>
