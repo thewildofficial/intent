@@ -36,9 +36,10 @@ export function getLocalDateString(d: Date = new Date()): string {
 
 export function getLocalStartAndEnd(dateString: string): { start: Date; end: Date } {
   const [year, month, day] = dateString.split('-').map(Number);
-  const start = new Date(Date.UTC(year, month - 1, day));
-  const end = new Date(Date.UTC(year, month - 1, day + 1) - 1);
-  return { start, end };
+  return {
+    start: new Date(year, month - 1, day, 0, 0, 0, 0),
+    end: new Date(year, month - 1, day, 23, 59, 59, 999),
+  };
 }
 
 export function getTodayDateString(): string {
@@ -163,4 +164,10 @@ export async function getBooleanSetting(key: string, defaultValue = false): Prom
 
 export async function setBooleanSetting(key: string, value: boolean) {
   return setSetting(key, value ? 'true' : 'false');
+}
+
+export function getActualMinutes(startedAt: Date, completedAt: Date | null, plannedMin: number): number {
+  if (!completedAt) return 0;
+  const elapsed = Math.round((new Date(completedAt).getTime() - new Date(startedAt).getTime()) / 60000);
+  return Math.max(0, elapsed);
 }

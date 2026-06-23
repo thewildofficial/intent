@@ -9,7 +9,8 @@ import Animated, {
   interpolate,
   useReducedMotion,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Radii } from '../../constants/theme';
 import { useStreaks } from '../../hooks/useStreaks';
 import { startSession as startSessionHaptic } from '../../utils/haptics';
@@ -21,8 +22,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Animated.View);
 export default function HomeScreen() {
   const Colors = useColors();
   const router = useRouter();
-  const { current, longest, isIntentionalToday, loading } = useStreaks();
+  const { current, longest, isIntentionalToday, loading, refresh } = useStreaks();
   const reduceMotion = useReducedMotion();
+
+  useFocusEffect(useCallback(() => { refresh(); }, [refresh]));
 
   const pulse = useSharedValue(0);
   const scale = useSharedValue(1);

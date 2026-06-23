@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useColors, Spacing, Radii, type ColorPalette } from '../../constants/theme';
-import { getSessionsForDate } from '../../db/queries';
+import { getSessionsForDate, getActualMinutes } from '../../db/queries';
 import { ArrowLeftIcon, ClockIcon, CalendarIcon, HeartIcon, SmileIcon, MehIcon, ToughIcon } from '../../components/Icons';
 import { DuoCard, EmptyState } from '../../components/DuoButton';
 
@@ -29,7 +29,8 @@ function formatTime(date: Date): string {
 
 export default function DayDetailScreen() {
   const Colors = useColors();
-  const { date } = useLocalSearchParams<{ date: string }>();
+  const params = useLocalSearchParams<{ date: string }>();
+  const date = typeof params.date === 'string' ? params.date : Array.isArray(params.date) ? params.date[0] : '';
   const router = useRouter();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export default function DayDetailScreen() {
     load();
   }, [date]);
 
-  const totalMinutes = sessions.filter((s) => s.completedAt !== null).reduce((sum, s) => sum + s.durationMin, 0);
+  const totalMinutes = sessions.reduce((sum, s) => sum + getActualMinutes(s.startedAt, s.completedAt, s.durationMin), 0);
 
   const displayDate = date
     ? new Date(date.replace(/-/g, '/')).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
@@ -95,7 +96,9 @@ export default function DayDetailScreen() {
                 <Text style={[styles.intentText, { color: Colors.text }]}>{session.intentText}</Text>
                 <View style={[styles.durationBadge, { backgroundColor: Colors.primary + '15' }]}>
                   <Text style={[styles.durationText, { color: Colors.primary }]}>
-                    {session.completedAt ? `${session.durationMin} min` : 'Incomplete'}
+                    {session.completedAt
+                      ? `${getActualMinutes(session.startedAt, session.completedAt, session.durationMin)} min`
+                      : 'Incomplete'}
                   </Text>
                 </View>
                 {session.reflectionText ? (

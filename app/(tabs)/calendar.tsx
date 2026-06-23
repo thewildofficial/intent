@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Radii } from '../../constants/theme';
-import { getSessionsForDateRange, getLocalDateString } from '../../db/queries';
+import { getSessionsForDateRange, getLocalDateString, getActualMinutes } from '../../db/queries';
 import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon } from '../../components/Icons';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -35,12 +35,13 @@ export default function CalendarScreen() {
     const totals: Record<string, number> = {};
     for (const session of sessions) {
       const key = getLocalDateString(new Date(session.startedAt));
-      totals[key] = (totals[key] ?? 0) + (session.completedAt ? session.durationMin : 0);
+      totals[key] = (totals[key] ?? 0) + getActualMinutes(session.startedAt, session.completedAt, session.durationMin);
     }
     setMinutesByDate(totals);
   }, [currentMonth]);
 
   useEffect(() => { loadMonthData(); }, [loadMonthData]);
+  useFocusEffect(useCallback(() => { loadMonthData(); }, [loadMonthData]));
 
   const monthLabel = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const year = currentMonth.getFullYear();

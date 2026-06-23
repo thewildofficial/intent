@@ -2,6 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useColors, Spacing, Radii, type ColorPalette } from '../constants/theme';
 import type { sessions } from '../db/schema';
 import { ClockIcon, HeartIcon, SmileIcon, MehIcon, ToughIcon } from './Icons';
+import { getActualMinutes } from '../db/queries';
 
 type SessionRow = typeof sessions.$inferSelect;
 
@@ -70,13 +71,15 @@ export function SessionTimeline({ sessions }: SessionTimelineProps) {
 
               <Text style={[styles.intent, { color: Colors.text }]}>{session.intentText}</Text>
 
-              <View style={styles.meta}>
-                <View style={[styles.durationBadge, { backgroundColor: Colors.primary + '15' }]}>
-                  <Text style={[styles.duration, { color: Colors.primary }]}>
-                    {formatDuration(session.durationMin)}
-                  </Text>
-                </View>
-              </View>
+                <View style={styles.meta}>
+                 <View style={[styles.durationBadge, { backgroundColor: Colors.primary + '15' }]}>
+                   <Text style={[styles.duration, { color: Colors.primary }]}>
+                     {session.completedAt
+                       ? formatDuration(getActualMinutes(session.startedAt, session.completedAt, session.durationMin))
+                       : 'Incomplete'}
+                   </Text>
+                 </View>
+               </View>
             </View>
           </View>
         );

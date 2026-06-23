@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useColors, Spacing, Radii } from '../../constants/theme';
 import { SessionTimeline } from '../../components/SessionTimeline';
-import { getTodaySessions } from '../../db/queries';
+import { getTodaySessions, getActualMinutes } from '../../db/queries';
 import type { sessions } from '../../db/schema';
 import { ReviewIcon, ClockIcon, TargetIcon } from '../../components/Icons';
 import { DuoCard, EmptyState } from '../../components/DuoButton';
@@ -27,9 +28,9 @@ export default function ReviewScreen() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMin, 0);
+  const totalMinutes = sessions.reduce((sum, s) => sum + getActualMinutes(s.startedAt, s.completedAt, s.durationMin), 0);
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: Colors.background }]} contentContainerStyle={styles.content}>
