@@ -1,20 +1,21 @@
 import { Tabs } from 'expo-router';
-import { Colors } from '../../constants/theme';
+import { useColors } from '../../constants/theme';
 import { HomeIcon, ReviewIcon, CalendarIcon, SettingsIcon } from '../../components/Icons';
 import type { IconProps } from '../../components/Icons';
 
-// Tab icon helper: renders icon with active color when focused
 function TabIcon({ Icon, focused, color }: { Icon: React.FC<IconProps>; focused: boolean; color: string }) {
   return <Icon size={28} color={color} strokeWidth={focused ? 2.5 : 2} />;
 }
 
 export default function TabLayout() {
+  const Colors = useColors();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.background,
           borderTopWidth: 2,
           borderTopColor: Colors.borderLight,
           height: 64,

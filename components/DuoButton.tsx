@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, Text, View, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import { Colors, Radii, Typography, Springs } from '../constants/theme';
-import { darken } from '../constants/theme';
+import { useColors, Radii, Springs, darken } from '../constants/theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -25,14 +24,6 @@ interface DuoButtonProps {
   textStyle?: TextStyle;
 }
 
-const VARIANT_COLORS: Record<ButtonVariant, { bg: string; shadow: string }> = {
-  primary:   { bg: Colors.primary,     shadow: darken(Colors.primary, 0.15) },
-  secondary: { bg: Colors.secondary,   shadow: darken(Colors.secondary, 0.15) },
-  accent:    { bg: Colors.accent,      shadow: darken(Colors.accent, 0.15) },
-  danger:    { bg: Colors.error,       shadow: darken(Colors.error, 0.15) },
-  ghost:     { bg: 'transparent',      shadow: 'transparent' },
-};
-
 const SIZE_CONFIG: Record<ButtonSize, { paddingV: number; paddingH: number; fontSize: number }> = {
   sm: { paddingV: 10, paddingH: 20, fontSize: 14 },
   md: { paddingV: 16, paddingH: 32, fontSize: 16 },
@@ -50,23 +41,34 @@ export function DuoButton({
   style,
   textStyle,
 }: DuoButtonProps) {
+  const Colors = useColors();
   const pressed = useSharedValue(0);
-  const colors = VARIANT_COLORS[variant];
+
+  const variantBg = {
+    primary: Colors.primary,
+    secondary: Colors.secondary,
+    accent: Colors.accent,
+    danger: Colors.error,
+    ghost: 'transparent',
+  }[variant];
+  const variantShadow = {
+    primary: darken(Colors.primary, 0.15),
+    secondary: darken(Colors.secondary, 0.15),
+    accent: darken(Colors.accent, 0.15),
+    danger: darken(Colors.error, 0.15),
+    ghost: 'transparent',
+  }[variant];
   const sz = SIZE_CONFIG[size];
 
-  const animatedStyle = useAnimatedStyle(() => {
-    const offsetY = pressed.value ? 2 : 0;
-    return {
-      transform: [{ translateY: offsetY }],
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: pressed.value ? 3 : 0 }],
+  }));
 
-  // The bottom "3D edge" that shows when button is raised
-  const edgeStyle = useAnimatedStyle(() => {
-    return {
-      opacity: pressed.value ? 0 : 1,
-    };
-  });
+  // The bottom "3D edge" — a thin strip that slides down when pressed
+  const edgeStyle = useAnimatedStyle(() => ({
+    opacity: pressed.value ? 0 : 1,
+    height: pressed.value ? 0 : 4,
+  }));
 
   const handlePressIn = () => {
     pressed.value = withSpring(1, Springs.press);
@@ -81,13 +83,13 @@ export function DuoButton({
 
   return (
     <View style={[styles.wrapper, fullWidth && { width: '100%' }, style]}>
-      {/* Bottom 3D edge — sits behind the button */}
-      {!isGhost && (
+      {/* Bottom 3D edge — a thin strip peeking out below the button */}
+      {!isGhost && !disabled && (
         <Animated.View
           style={[
             styles.bottomEdge,
             {
-              backgroundColor: disabled ? Colors.border : colors.shadow,
+              backgroundColor: variantShadow,
               borderRadius: Radii.md,
             },
             edgeStyle,
@@ -98,9 +100,9 @@ export function DuoButton({
         style={[
           styles.button,
           {
-            backgroundColor: isGhost ? 'transparent' : (disabled ? Colors.border : colors.bg),
+            backgroundColor: isGhost ? 'transparent' : (disabled ? Colors.border : variantBg),
             borderWidth: isGhost ? 2 : 0,
-            borderColor: disabled ? Colors.border : colors.bg,
+            borderColor: disabled ? Colors.border : variantBg,
             borderRadius: Radii.md,
             paddingVertical: sz.paddingV,
             paddingHorizontal: sz.paddingH,
@@ -116,7 +118,7 @@ export function DuoButton({
           {icon && <View style={styles.iconWrapper}>{icon}</View>}
           <Text
             style={[
-              { fontSize: sz.fontSize, fontWeight: '800', color: isGhost ? colors.bg : textColor },
+              { fontSize: sz.fontSize, fontWeight: '800', color: isGhost ? variantBg : textColor },
               textStyle,
             ]}
           >
@@ -136,10 +138,15 @@ interface DuoCardProps {
 }
 
 export function DuoCard({ children, style, elevated = false }: DuoCardProps) {
+  const Colors = useColors();
   return (
     <View
       style={[
         styles.card,
+        {
+          backgroundColor: Colors.cardBg,
+          borderColor: Colors.borderLight,
+        },
         elevated ? styles.cardElevated : null,
         style,
       ]}
@@ -157,11 +164,13 @@ interface DuoBadgeProps {
   icon?: React.ReactNode;
 }
 
-export function DuoBadge({ label, color = Colors.primary, textColor = Colors.white, icon }: DuoBadgeProps) {
+export function DuoBadge({ label, color, textColor, icon }: DuoBadgeProps) {
+  const Colors = useColors();
+  const c = color ?? Colors.primary;
   return (
-    <View style={[styles.badge, { backgroundColor: color + '20', borderColor: color }]}>
+    <View style={[styles.badge, { backgroundColor: c + '20', borderColor: c }]}>
       {icon}
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
+      <Text style={[styles.badgeText, { color: textColor ?? c }]}>{label}</Text>
     </View>
   );
 }
@@ -174,14 +183,16 @@ interface StreakBadgeProps {
   icon: React.ReactNode;
 }
 
-export function StreakBadge({ count, label, color = Colors.primary, icon }: StreakBadgeProps) {
+export function StreakBadge({ count, label, color, icon }: StreakBadgeProps) {
+  const Colors = useColors();
+  const c = color ?? Colors.primary;
   return (
-    <View style={styles.streakBadge}>
-      <View style={[styles.streakIconWrap, { backgroundColor: color + '18' }]}>
+    <View style={[styles.streakBadge, { backgroundColor: Colors.cardBg, borderColor: Colors.borderLight }]}>
+      <View style={[styles.streakIconWrap, { backgroundColor: c + '18' }]}>
         {icon}
       </View>
-      <Text style={[styles.streakNumber, { color }]}>{count}</Text>
-      <Text style={styles.streakLabel}>{label}</Text>
+      <Text style={[styles.streakNumber, { color: c }]}>{count}</Text>
+      <Text style={[styles.streakLabel, { color: Colors.textLight }]}>{label}</Text>
     </View>
   );
 }
@@ -194,13 +205,14 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, subtitle, icon }: SectionHeaderProps) {
+  const Colors = useColors();
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionHeaderLeft}>
-        {icon && <View style={styles.sectionIcon}>{icon}</View>}
+        {icon && <View style={[styles.sectionIcon, { backgroundColor: Colors.surfaceAlt }]}>{icon}</View>}
         <View>
-          <Text style={styles.sectionTitle}>{title}</Text>
-          {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
+          <Text style={[styles.sectionTitle, { color: Colors.text }]}>{title}</Text>
+          {subtitle && <Text style={[styles.sectionSubtitle, { color: Colors.textLight }]}>{subtitle}</Text>}
         </View>
       </View>
     </View>
@@ -215,11 +227,12 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
+  const Colors = useColors();
   return (
     <View style={styles.emptyState}>
-      <View style={styles.emptyIconWrap}>{icon}</View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
+      <View style={[styles.emptyIconWrap, { backgroundColor: Colors.surfaceAlt }]}>{icon}</View>
+      <Text style={[styles.emptyTitle, { color: Colors.text }]}>{title}</Text>
+      {subtitle && <Text style={[styles.emptySubtitle, { color: Colors.textLight }]}>{subtitle}</Text>}
     </View>
   );
 }
@@ -235,13 +248,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 100,
+    zIndex: 1,
   },
+  // Thin 4px strip at the BOTTOM only — creates the 3D "thickness" effect
   bottomEdge: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '100%',
   },
   content: {
     flexDirection: 'row',
@@ -253,10 +267,8 @@ const styles = StyleSheet.create({
   },
   // Card
   card: {
-    backgroundColor: Colors.cardBg,
     borderRadius: Radii.lg,
     borderWidth: 2,
-    borderColor: Colors.borderLight,
     padding: 20,
   },
   cardElevated: {
@@ -284,12 +296,10 @@ const styles = StyleSheet.create({
   // Streak badge
   streakBadge: {
     alignItems: 'center',
-    backgroundColor: Colors.white,
     borderRadius: Radii.lg,
     paddingVertical: 20,
     paddingHorizontal: 24,
     borderWidth: 2,
-    borderColor: Colors.borderLight,
     minWidth: 120,
   },
   streakIconWrap: {
@@ -307,7 +317,6 @@ const styles = StyleSheet.create({
   streakLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: Colors.textLight,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -327,19 +336,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: Colors.text,
   },
   sectionSubtitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: Colors.textLight,
     marginTop: 2,
   },
   // Empty state
@@ -351,7 +357,6 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -359,13 +364,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: Colors.text,
     textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
     fontWeight: '500',
-    color: Colors.textLight,
     textAlign: 'center',
     marginTop: 4,
   },

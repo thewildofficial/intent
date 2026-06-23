@@ -1,17 +1,24 @@
 import { create } from 'zustand';
 
+type ThemeMode = 'light' | 'dark';
+
 interface UIState {
-  theme: 'light' | 'dark';
+  themeMode: ThemeMode;
   reduceMotion: boolean;
-  
-  setTheme: (theme: 'light' | 'dark') => void;
+
+  setThemeMode: (mode: ThemeMode) => void;
+  toggleTheme: () => void;
   setReduceMotion: (reduce: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  theme: 'light',
+  themeMode: 'light',
   reduceMotion: false,
-  
-  setTheme: (theme) => set({ theme }),
+
+  setThemeMode: (themeMode) => set({ themeMode }),
+  toggleTheme: () =>
+    set((state) => ({
+      themeMode: state.themeMode === 'light' ? 'dark' : 'light',
+    })),
   setReduceMotion: (reduceMotion) => set({ reduceMotion }),
 }));

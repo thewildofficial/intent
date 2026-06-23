@@ -7,7 +7,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { Colors } from '../constants/theme';
+import { useColors } from '../constants/theme';
 import { useEffect } from 'react';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -15,7 +15,7 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 interface ProgressRingProps {
   size?: number;
   strokeWidth?: number;
-  progress: number; // 0..1
+  progress: number;
   style?: ViewStyle;
 }
 
@@ -25,6 +25,7 @@ export function ProgressRing({
   progress,
   style,
 }: ProgressRingProps) {
+  const Colors = useColors();
   const reduceMotion = useReducedMotion();
   const animatedProgress = useSharedValue(0);
 
@@ -53,7 +54,6 @@ export function ProgressRing({
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
       <Svg width={size} height={size}>
-        {/* Background track */}
         <Circle
           cx={center}
           cy={center}
@@ -62,7 +62,6 @@ export function ProgressRing({
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Progress arc */}
         <AnimatedCircle
           cx={center}
           cy={center}

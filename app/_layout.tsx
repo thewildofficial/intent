@@ -7,11 +7,12 @@ import * as Notifications from 'expo-notifications';
 import { Component, type ReactNode } from 'react';
 import migrations from '../db/migrations/migrations';
 import { useState, useEffect } from 'react';
-import { Colors, Spacing, Typography } from '../constants/theme';
+import { useColors, Spacing, Typography } from '../constants/theme';
 import { useDB } from '../db/client';
 import { settings } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/db';
+import { useUIStore } from '../stores/uiStore';
 
 try {
   Notifications.setNotificationHandler({
@@ -29,29 +30,23 @@ try {
 function OnboardingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const db = useDB();
+  const dbCtx = useDB();
   const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const result = await db.select().from(settings).where(eq(settings.key, 'onboardingComplete'));
+        const result = await dbCtx.select().from(settings).where(eq(settings.key, 'onboardingComplete'));
         const raw = result[0]?.value ?? null;
         const complete = raw === null ? false : raw === 'true';
-        if (mounted) {
-          setOnboardingComplete(complete);
-        }
+        if (mounted) setOnboardingComplete(complete);
       } catch (e) {
         console.error('Failed to check onboarding status:', e);
-        if (mounted) {
-          setOnboardingComplete(true);
-        }
+        if (mounted) setOnboardingComplete(true);
       }
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => {
@@ -68,12 +63,8 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (success) {
-      setIsReady(true);
-    }
-    if (error) {
-      console.error('Migration error:', error);
-    }
+    if (success) setIsReady(true);
+    if (error) console.error('Migration error:', error);
   }, [success, error]);
 
   if (!isReady) {
@@ -110,36 +101,40 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 
   render() {
     if (this.state.hasError) {
-      return (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorMessage}>
-            {this.state.error?.message ?? 'An unexpected error occurred.'}
-          </Text>
-          <TouchableOpacity
-            style={styles.errorButton}
-            onPress={() => {
-              this.setState({ hasError: false, error: null });
-            }}
-          >
-            <Text style={styles.errorButtonText}>Try again</Text>
-          </TouchableOpacity>
-        </View>
-      );
+      return <ErrorScreen error={this.state.error} onRetry={() => this.setState({ hasError: false, error: null })} />;
     }
-
     return this.props.children;
   }
 }
 
+function ErrorScreen({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
+  const Colors = useColors();
+  return (
+    <View style={[styles.errorContainer, { backgroundColor: Colors.background }]}>
+      <Text style={[styles.errorTitle, { color: Colors.text }]}>Something went wrong</Text>
+      <Text style={[styles.errorMessage, { color: Colors.textLight }]}>
+        {error?.message ?? 'An unexpected error occurred.'}
+      </Text>
+      <TouchableOpacity
+        style={[styles.errorButton, { backgroundColor: Colors.primary }]}
+        onPress={onRetry}
+      >
+        <Text style={[styles.errorButtonText, { color: Colors.white }]}>Try again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function RootLayout() {
+  const themeMode = useUIStore((s) => s.themeMode);
+
   return (
     <ErrorBoundary>
       <SQLiteProvider databaseName="intent.db">
         <MigrationGate>
           <View style={styles.container}>
             <Slot />
-            <StatusBar style="auto" />
+            <StatusBar style={themeMode === 'dark' ? 'light' : 'dark'} />
           </View>
         </MigrationGate>
       </SQLiteProvider>
@@ -148,54 +143,37 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   loading: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
   },
-  loadingContent: {
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...Typography.body,
-    color: Colors.text,
-  },
+  loadingContent: { alignItems: 'center' },
+  loadingText: { ...Typography.body },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
     padding: Spacing.lg,
-  },
-  errorEmoji: {
-    fontSize: 56,
-    marginBottom: Spacing.md,
   },
   errorTitle: {
     ...Typography.title,
-    color: Colors.text,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   errorMessage: {
     ...Typography.body,
-    color: Colors.textLight,
     textAlign: 'center',
     marginBottom: Spacing.xl,
   },
   errorButton: {
-    backgroundColor: Colors.primary,
     borderRadius: 12,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
   },
   errorButtonText: {
     ...Typography.subtitle,
-    color: Colors.white,
     fontWeight: '600',
   },
 });
