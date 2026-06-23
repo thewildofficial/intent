@@ -1,14 +1,17 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useTimer } from '../../hooks/useTimer';
-import { useEffect } from 'react';
+import { ProgressRing } from '../../components/ProgressRing';
+import { buttonPress, completeSession } from '../../utils/haptics';
+import { useEffect, useMemo } from 'react';
 
 export default function SessionScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
   const { intent, duration, pauseSession, resumeSession, finishSession, isPaused, startSession } = useSessionStore();
-  const { formattedRemaining, isComplete } = useTimer();
+  const { formattedRemaining, isComplete, remainingMs } = useTimer();
 
   useEffect(() => {
     startSession();
@@ -16,12 +19,23 @@ export default function SessionScreen() {
 
   useEffect(() => {
     if (isComplete) {
+      completeSession();
       finishSession();
       router.push('/reflection');
     }
   }, [isComplete]);
 
-  const handlePause = () => {
+  const progress = useMemo(() => {
+    if (duration <= 0) return 0;
+    const totalMs = duration * 60 * 1000;
+    const clampedRemaining = Math.max(0, Math.min(totalMs, remainingMs ?? totalMs));
+    return 1 - clampedRemaining / totalMs;
+  }, [duration, remainingMs]);
+
+  const ringSize = Math.min(width * 0.72, height * 0.36, 320);
+
+  const handlePause = async () => {
+    await buttonPress();
     if (isPaused) {
       resumeSession();
     } else {
@@ -29,13 +43,13 @@ export default function SessionScreen() {
     }
   };
 
-  const handleFinishEarly = () => {
+  const handleFinishEarly = async () => {
+    await completeSession();
     finishSession();
     router.push('/reflection');
   };
 
   const handleExtend = () => {
-    // Extend by 5 minutes
     const currentDuration = useSessionStore.getState().duration;
     useSessionStore.setState({ duration: currentDuration + 5 });
   };
@@ -47,9 +61,17 @@ export default function SessionScreen() {
         <Text style={styles.intentText}>{intent}</Text>
       </View>
 
-      <View style={styles.timerContainer}>
-        <Text style={styles.timer}>{formattedRemaining}</Text>
-        <Text style={styles.duration}>of {duration} minutes</Text>
+      <View style={styles.timerWrapper}>
+        <ProgressRing
+          size={ringSize}
+          strokeWidth={14}
+          progress={progress}
+          style={styles.ring}
+        />
+        <View style={styles.timerContainer}>
+          <Text style={styles.timer}>{formattedRemaining}</Text>
+          <Text style={styles.duration}>of {duration} minutes</Text>
+        </View>
       </View>
 
       <View style={styles.controls}>
@@ -92,7 +114,12 @@ const styles = StyleSheet.create({
     color: Colors.text,
     textAlign: 'center',
   },
+  timerWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   timerContainer: {
+    position: 'absolute',
     alignItems: 'center',
   },
   timer: {
@@ -105,6 +132,9 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.textLight,
     marginTop: Spacing.sm,
+  },
+  ring: {
+    opacity: 0.9,
   },
   controls: {
     flexDirection: 'row',

@@ -1,10 +1,17 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
 import { createSession, recomputeStreaks } from '../../db/queries';
 import { useNotifications } from '../../hooks/useNotifications';
+import { streakIncrement, buttonPress } from '../../utils/haptics';
 
 const MOODS = [
   { label: 'Great', emoji: '🙂' },
@@ -13,15 +20,42 @@ const MOODS = [
   { label: 'Hard', emoji: '☹️' },
 ];
 
+const AnimatedView = Animated.createAnimatedComponent(View);
+
 export default function ReflectionScreen() {
   const router = useRouter();
   const { intent, duration, startEpochMs, reset } = useSessionStore();
   const [reflection, setReflection] = useState('');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const { scheduleSessionComplete } = useNotifications();
+  const reduceMotion = useReducedMotion();
+
+  const titleScale = useSharedValue(0.96);
+  const titleOpacity = useSharedValue(0);
+  const buttonScale = useSharedValue(1);
+
+  useEffect(() => {
+    titleOpacity.value = withSpring(1, { damping: 12, stiffness: 100 });
+    titleScale.value = withSpring(1, { damping: 12, stiffness: 100 });
+  }, [reduceMotion]);
+
+  const titleStyle = useAnimatedStyle(() => {
+    return {
+      opacity: titleOpacity.value,
+      transform: [{ scale: titleScale.value }],
+    };
+  });
+
+  const buttonPressStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: buttonScale.value }],
+    };
+  });
 
   const handleComplete = async () => {
     if (!startEpochMs) return;
+
+    await buttonPress();
 
     const now = new Date();
     await createSession({
@@ -36,15 +70,26 @@ export default function ReflectionScreen() {
     });
 
     await recomputeStreaks();
+    await streakIncrement();
     await scheduleSessionComplete();
 
     reset();
     router.replace('/(tabs)');
   };
 
+  const handlePressIn = () => {
+    buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
+  };
+
+  const handlePressOut = () => {
+    buttonScale.value = withSpring(1, { damping: 15, stiffness: 300 });
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Session Complete 🎯</Text>
+      <AnimatedView style={[styles.titleRow, titleStyle]}>
+        <Text style={styles.title}>Session Complete 🎯</Text>
+      </AnimatedView>
       <Text style={styles.subtitle}>What did you accomplish?</Text>
 
       <TextInput
@@ -75,12 +120,16 @@ export default function ReflectionScreen() {
         ))}
       </View>
 
-      <TouchableOpacity
-        style={styles.completeButton}
-        onPress={handleComplete}
-      >
-        <Text style={styles.completeText}>Complete</Text>
-      </TouchableOpacity>
+      <Animated.View style={buttonPressStyle}>
+        <TouchableOpacity
+          style={styles.completeButton}
+          onPress={handleComplete}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+        >
+          <Text style={styles.completeText}>Complete</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
@@ -91,11 +140,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     padding: Spacing.lg,
   },
+  titleRow: {
+    marginTop: Spacing.xxl,
+    marginBottom: Spacing.sm,
+  },
   title: {
     ...Typography.title,
     color: Colors.text,
-    marginTop: Spacing.xxl,
-    marginBottom: Spacing.sm,
   },
   subtitle: {
     ...Typography.body,

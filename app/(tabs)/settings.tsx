@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Switch, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity } from 'react-native';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useStreaks } from '../../hooks/useStreaks';
+import { useExport, type ExportFormat } from '../../hooks/useExport';
 
 export default function SettingsScreen() {
   const { current } = useStreaks();
@@ -15,12 +16,21 @@ export default function SettingsScreen() {
     setStreakWarningEnabled,
     requestPermission,
   } = useNotifications(current);
+  const { generateExport } = useExport();
 
   const handleToggle = async (enabled: boolean, setter: (v: boolean) => Promise<void>) => {
     if (enabled && !permission.granted) {
       await requestPermission();
     }
     await setter(enabled);
+  };
+
+  const handleExport = async (format: ExportFormat) => {
+    try {
+      await generateExport(format);
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
   };
 
   return (
@@ -69,8 +79,30 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Data Export</Text>
+        <TouchableOpacity
+          style={[styles.exportButton, { backgroundColor: Colors.primary }]}
+          onPress={() => handleExport('markdown')}
+        >
+          <Text style={styles.exportButtonText}>Export as Markdown</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.exportButton, { backgroundColor: Colors.secondary }]}
+          onPress={() => handleExport('csv')}
+        >
+          <Text style={styles.exportButtonText}>Export as CSV</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.exportButton, { backgroundColor: Colors.accent }]}
+          onPress={() => handleExport('json')}
+        >
+          <Text style={[styles.exportButtonText, { color: Colors.text }]}>Export as JSON</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.aboutText}>Intent — Phase 2: Streaks + Daily Review + Notifications</Text>
+        <Text style={styles.aboutText}>Intent — Phase 3: Calendar Heatmap + Data Export</Text>
       </View>
     </ScrollView>
   );
@@ -137,5 +169,17 @@ const styles = StyleSheet.create({
   aboutText: {
     ...Typography.body,
     color: Colors.textLight,
+  },
+  exportButton: {
+    borderRadius: 12,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  exportButtonText: {
+    ...Typography.subtitle,
+    color: Colors.white,
+    fontWeight: '600',
   },
 });

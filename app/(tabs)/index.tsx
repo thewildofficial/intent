@@ -1,11 +1,18 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors, Spacing, Typography } from '../../constants/theme';
 import { useStreaks } from '../../hooks/useStreaks';
+import { AnimatedStartButton } from '../../components/AnimatedStartButton';
+import { startSession as startSessionHaptic } from '../../utils/haptics';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { current, longest, isIntentionalToday, loading } = useStreaks();
+
+  const handleStart = async () => {
+    await startSessionHaptic();
+    router.push('/intent');
+  };
 
   return (
     <View style={styles.container}>
@@ -26,13 +33,7 @@ export default function HomeScreen() {
         )}
       </View>
 
-      <TouchableOpacity
-        style={styles.startButton}
-        onPress={() => router.push('/intent')}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.startButtonText}>Start Session</Text>
-      </TouchableOpacity>
+      <AnimatedStartButton onPress={handleStart} />
     </View>
   );
 }
@@ -82,23 +83,5 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.success,
     fontWeight: '600',
-  },
-  startButton: {
-    width: '80%',
-    height: '35%',
-    backgroundColor: Colors.primary,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  startButtonText: {
-    ...Typography.title,
-    color: Colors.white,
-    fontWeight: '700',
   },
 });

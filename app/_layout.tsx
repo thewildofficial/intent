@@ -1,12 +1,15 @@
-import { Slot } from 'expo-router';
+import { Slot, useRouter, usePathname } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import * as Notifications from 'expo-notifications';
+import { Component, type ReactNode } from 'react';
+import { getBooleanSetting } from '../db/queries';
 import migrations from '../db/migrations/migrations';
 import { db } from '../db/db';
 import { useState, useEffect } from 'react';
+import { Colors, Spacing, Typography } from '../constants/theme';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -43,16 +46,92 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
   return children;
 }
 
-export default function RootLayout() {
-  return (
-    <SQLiteProvider databaseName="intent.db">
-      <MigrationGate>
-        <View style={styles.container}>
-          <Slot />
-          <StatusBar style="auto" />
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: unknown) {
+    console.error('Uncaught error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorEmoji}>💥</Text>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorMessage}>
+            {this.state.error?.message ?? 'An unexpected error occurred.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => {
+              this.setState({ hasError: false, error: null });
+            }}
+          >
+            <Text style={styles.errorButtonText}>Try again</Text>
+          </TouchableOpacity>
         </View>
-      </MigrationGate>
-    </SQLiteProvider>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default function RootLayout() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const complete = await getBooleanSetting('onboardingComplete', false);
+        if (mounted) {
+          setOnboardingComplete(complete);
+        }
+      } catch (e) {
+        console.error('Failed to check onboarding status:', e);
+        if (mounted) {
+          setOnboardingComplete(true);
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (onboardingComplete === false && pathname !== '/onboarding') {
+      router.replace('/onboarding');
+    }
+  }, [onboardingComplete, pathname]);
+
+  return (
+    <ErrorBoundary>
+      <SQLiteProvider databaseName="intent.db">
+        <MigrationGate>
+          <View style={styles.container}>
+            <Slot />
+            <StatusBar style="auto" />
+          </View>
+        </MigrationGate>
+      </SQLiteProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -64,13 +143,47 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFDF7',
+    backgroundColor: Colors.background,
   },
   loadingContent: {
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 16,
-    color: '#3C3C3C',
+    ...Typography.body,
+    color: Colors.text,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    padding: Spacing.lg,
+  },
+  errorEmoji: {
+    fontSize: 56,
+    marginBottom: Spacing.md,
+  },
+  errorTitle: {
+    ...Typography.title,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    ...Typography.body,
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  errorButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+  },
+  errorButtonText: {
+    ...Typography.subtitle,
+    color: Colors.white,
+    fontWeight: '600',
   },
 });
