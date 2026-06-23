@@ -64,10 +64,11 @@ export function DuoButton({
     transform: [{ translateY: pressed.value ? 3 : 0 }],
   }));
 
-  // The bottom "3D edge" — a thin strip that slides down when pressed
-  const edgeStyle = useAnimatedStyle(() => ({
-    opacity: pressed.value ? 0 : 1,
-    height: pressed.value ? 0 : 4,
+  // 3D shadow under the button — stays within the rounded wrapper, no absolute edge view
+  const shadowStyle = useAnimatedStyle(() => ({
+    shadowOffset: { width: 0, height: pressed.value ? 1 : 4 },
+    shadowOpacity: pressed.value ? 0.6 : 1,
+    elevation: pressed.value ? 1 : 4,
   }));
 
   const handlePressIn = () => {
@@ -82,21 +83,7 @@ export function DuoButton({
   const isGhost = variant === 'ghost';
 
   return (
-    <View style={[styles.wrapper, fullWidth && { width: '100%' }, style, { paddingBottom: 4 }]}>
-      {/* Bottom 3D edge — a thin strip peeking out below the button */}
-      {!isGhost && !disabled && (
-        <Animated.View
-          style={[
-            styles.bottomEdge,
-            {
-              backgroundColor: variantShadow,
-              borderBottomLeftRadius: Radii.md,
-              borderBottomRightRadius: Radii.md,
-            },
-            edgeStyle,
-          ]}
-        />
-      )}
+    <View style={[styles.wrapper, fullWidth && styles.wrapperFullWidth, style]}>
       <AnimatedPressable
         style={[
           styles.button,
@@ -107,7 +94,10 @@ export function DuoButton({
             borderRadius: Radii.md,
             paddingVertical: sz.paddingV,
             paddingHorizontal: sz.paddingH,
+            shadowColor: isGhost ? 'transparent' : variantShadow,
+            shadowRadius: 0,
           },
+          shadowStyle,
           animatedStyle,
         ]}
         onPress={onPress}
@@ -244,19 +234,19 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    borderRadius: Radii.md,
+  },
+  wrapperFullWidth: {
+    width: '100%',
   },
   button: {
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 100,
+    width: '100%',
     zIndex: 1,
-  },
-  // Thin 4px strip at the BOTTOM only — creates the 3D "thickness" effect
-  bottomEdge: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
   },
   content: {
     flexDirection: 'row',
@@ -271,6 +261,8 @@ const styles = StyleSheet.create({
     borderRadius: Radii.lg,
     borderWidth: 2,
     padding: 20,
+    overflow: 'hidden',
+    maxWidth: '100%',
   },
   cardElevated: {
     borderWidth: 0,

@@ -41,7 +41,7 @@ export function AnimatedStartButton({
     if (reduceMotion) return {};
 
     const glowOpacity = interpolate(pulse.value, [0, 1], [0.25, 0.55]);
-    const glowScale = interpolate(pulse.value, [0, 1], [1, 1.15]);
+    const glowScale = interpolate(pulse.value, [0, 1], [1, 1.12]);
 
     return {
       opacity: glowOpacity,
@@ -82,7 +82,8 @@ export function AnimatedStartButton({
 
 const styles = StyleSheet.create({
   container: {
-    width: '80%',
+    width: '56%',
+    maxWidth: 220,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -102,10 +103,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.35,
-    shadowRadius: 24,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 8,
   },
   label: {
     ...Typography.title,
