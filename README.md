@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.png" width="128" height="128" alt="Intent icon">
+</p>
+
 # 🎯 Intent
 
 > *Commit to one thing. Focus. Reflect. Build streaks.*
