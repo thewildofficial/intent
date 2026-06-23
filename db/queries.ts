@@ -95,7 +95,7 @@ export async function recomputeStreaks(): Promise<void> {
     })
     .from(sessions)
     .where(sql`${sessions.completedAt} IS NOT NULL`)
-    .groupBy(sql`date`);
+    .groupBy(sql`strftime('%Y-%m-%d', datetime(${sessions.completedAt} / 1000, 'unixepoch', 'localtime'))`);
 
   const intentionalDates = new Set(rows.map((r) => r.date));
 

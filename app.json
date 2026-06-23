@@ -3,6 +3,7 @@
     "name": "intent",
     "slug": "intent",
     "version": "1.0.0",
+    "scheme": "intent",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -11,7 +12,10 @@
       "bundleIdentifier": "com.intent.app",
       "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -35,7 +39,6 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-sharing",
       [
         "expo-splash-screen",
         {
@@ -47,10 +50,10 @@
       ]
     ],
     "extra": {
+      "router": {},
       "eas": {
-        "projectId": "intent"
+        "projectId": "8187b9bc-8e2e-426d-b174-49dd15e3dd11"
       }
-    },
-    "owner": "intent"
+    }
   }
 }

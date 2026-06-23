@@ -1,16 +1,21 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Typography, Radii } from '../../constants/theme';
 import { useSessionStore } from '../../stores/sessionStore';
+import { DuoButton } from '../../components/DuoButton';
+import { ArrowLeftIcon, SparkleIcon } from '../../components/Icons';
+import { buttonPress } from '../../utils/haptics';
 
 const EXAMPLE_INTENTS = [
-  'Read transformer paper',
-  'Walk outside',
-  'Lift weights',
-  'Study German',
-  'Journal',
-  'Relax intentionally',
+  { label: 'Read a paper', emoji: '📖' },
+  { label: 'Walk outside', emoji: '🚶' },
+  { label: 'Lift weights', emoji: '🏋️' },
+  { label: 'Study German', emoji: '🇩🇪' },
+  { label: 'Journal', emoji: '✍️' },
+  { label: 'Meditate', emoji: '🧘' },
+  { label: 'Deep work', emoji: '💻' },
+  { label: 'Draw something', emoji: '🎨' },
 ];
 
 export default function IntentScreen() {
@@ -18,50 +23,83 @@ export default function IntentScreen() {
   const setIntent = useSessionStore((state) => state.setIntent);
   const [text, setText] = useState('');
 
-  const handleContinue = () => {
-    if (text.trim()) {
-      setIntent(text.trim());
-      router.push('/duration');
-    }
+  const handleContinue = async () => {
+    if (!text.trim()) return;
+    await buttonPress();
+    setIntent(text.trim());
+    router.push('/duration');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>What is your intention?</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeftIcon size={28} color={Colors.text} />
+        </TouchableOpacity>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Type your intention..."
-        placeholderTextColor={Colors.textLight}
-        value={text}
-        onChangeText={setText}
-        multiline
-        maxLength={100}
-        autoFocus
-      />
+      {/* Title */}
+      <View style={styles.titleSection}>
+        <View style={styles.titleRow}>
+          <SparkleIcon size={28} color={Colors.accent} />
+          <Text style={styles.title}>What's your intention?</Text>
+        </View>
+        <Text style={styles.subtitle}>Pick one thing to focus on</Text>
+      </View>
 
-      <ScrollView style={styles.examples} showsVerticalScrollIndicator={false}>
-        <Text style={styles.examplesTitle}>Examples:</Text>
-        {EXAMPLE_INTENTS.map((example, index) => (
+      {/* Input */}
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          placeholder="Type your intention..."
+          placeholderTextColor={Colors.textMuted}
+          value={text}
+          onChangeText={setText}
+          multiline
+          maxLength={100}
+          autoFocus
+        />
+        <Text style={styles.charCount}>{text.length}/100</Text>
+      </View>
+
+      {/* Quick pick chips */}
+      <Text style={styles.chipsTitle}>QUICK PICK</Text>
+      <View style={styles.chipsContainer}>
+        {EXAMPLE_INTENTS.map((item) => (
           <TouchableOpacity
-            key={index}
-            style={styles.exampleButton}
-            onPress={() => {
-              setText(example);
-            }}
+            key={item.label}
+            style={[
+              styles.chip,
+              text === item.label && styles.chipSelected,
+            ]}
+            onPress={() => setText(item.label)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.exampleText}>{example}</Text>
+            <Text style={styles.chipEmoji}>{item.emoji}</Text>
+            <Text
+              style={[
+                styles.chipText,
+                text === item.label && styles.chipTextSelected,
+              ]}
+            >
+              {item.label}
+            </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
-      <TouchableOpacity
-        style={[styles.continueButton, !text.trim() && styles.continueButtonDisabled]}
-        onPress={handleContinue}
-        disabled={!text.trim()}
-      >
-        <Text style={styles.continueButtonText}>Continue</Text>
-      </TouchableOpacity>
+      {/* Continue button */}
+      <View style={styles.footer}>
+        <DuoButton
+          label="CONTINUE"
+          onPress={handleContinue}
+          fullWidth
+          size="lg"
+          disabled={!text.trim()}
+          variant="primary"
+        />
+      </View>
     </View>
   );
 }
@@ -72,57 +110,103 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     padding: Spacing.lg,
   },
+  header: {
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleSection: {
+    marginBottom: Spacing.xl,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
-    ...Typography.title,
+    fontSize: 26,
+    fontWeight: '900',
     color: Colors.text,
-    marginTop: Spacing.xxl,
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.textLight,
+    marginTop: 4,
+    marginLeft: 36,
+  },
+  inputWrapper: {
+    position: 'relative',
     marginBottom: Spacing.lg,
   },
   input: {
-    ...Typography.body,
+    fontSize: 18,
+    fontWeight: '600',
     borderWidth: 2,
-    borderColor: Colors.border,
-    borderRadius: 12,
+    borderColor: Colors.borderLight,
+    borderRadius: Radii.md,
     padding: Spacing.md,
-    minHeight: 100,
+    minHeight: 80,
     textAlignVertical: 'top',
     color: Colors.text,
-  },
-  examples: {
-    marginTop: Spacing.lg,
-    maxHeight: 200,
-  },
-  examplesTitle: {
-    ...Typography.caption,
-    color: Colors.textLight,
-    marginBottom: Spacing.sm,
-  },
-  exampleButton: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
     backgroundColor: Colors.white,
-    borderRadius: 8,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  exampleText: {
-    ...Typography.body,
+  charCount: {
+    position: 'absolute',
+    bottom: 8,
+    right: 12,
+    fontSize: 12,
+    fontWeight: '500',
+    color: Colors.textMuted,
+  },
+  chipsTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    flex: 1,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: Colors.white,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
+    borderRadius: Radii.pill,
+  },
+  chipSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primary + '12',
+  },
+  chipEmoji: {
+    fontSize: 18,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.text,
   },
-  continueButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: Spacing.md,
-    alignItems: 'center',
-    marginTop: Spacing.lg,
+  chipTextSelected: {
+    color: Colors.primary,
+    fontWeight: '700',
   },
-  continueButtonDisabled: {
-    backgroundColor: Colors.border,
-  },
-  continueButtonText: {
-    ...Typography.subtitle,
-    color: Colors.white,
-    fontWeight: '600',
+  footer: {
+    paddingBottom: Spacing.lg,
   },
 });

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Radii } from '../../constants/theme';
 import { getSessionsForDate } from '../../db/queries';
+import { ArrowLeftIcon, ClockIcon, CalendarIcon, HeartIcon, SmileIcon, MehIcon, ToughIcon } from '../../components/Icons';
+import { DuoCard, EmptyState } from '../../components/DuoButton';
 
 type SessionRow = {
   id: number;
@@ -14,11 +16,11 @@ type SessionRow = {
   reflectionText: string | null;
 };
 
-const MOOD_EMOJI: Record<string, string> = {
-  great: '🤩',
-  good: '🙂',
-  neutral: '😐',
-  hard: '😣',
+const MOOD_ICONS: Record<string, { Icon: React.FC<{ size?: number; color?: string }>; color: string }> = {
+  great:   { Icon: HeartIcon,  color: Colors.moodGreat },
+  good:    { Icon: SmileIcon,  color: Colors.moodGood },
+  neutral: { Icon: MehIcon,    color: Colors.moodNeutral },
+  hard:    { Icon: ToughIcon,   color: Colors.moodHard },
 };
 
 function formatTime(date: Date): string {
@@ -37,14 +39,12 @@ export default function DayDetailScreen() {
 
   useEffect(() => {
     if (!date) return;
-
     const load = async () => {
       setLoading(true);
       const rows = await getSessionsForDate(date);
       setSessions(rows as SessionRow[]);
       setLoading(false);
     };
-
     load();
   }, [date]);
 
@@ -63,42 +63,65 @@ export default function DayDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      {/* Back */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backButtonText}>← Back</Text>
+        <ArrowLeftIcon size={28} color={Colors.text} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>{displayDate}</Text>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryValue}>{totalMinutes}</Text>
-        <Text style={styles.summaryLabel}>intentional minutes</Text>
+      {/* Date header */}
+      <View style={styles.dateHeader}>
+        <View style={styles.dateIconWrap}>
+          <CalendarIcon size={24} color={Colors.primary} />
+        </View>
+        <Text style={styles.dateText}>{displayDate}</Text>
       </View>
 
+      {/* Summary */}
+      <DuoCard style={styles.summaryCard}>
+        <Text style={styles.summaryValue}>{totalMinutes}</Text>
+        <Text style={styles.summaryLabel}>intentional minutes</Text>
+      </DuoCard>
+
+      {/* Sessions */}
       {loading ? (
-        <Text style={styles.emptyText}>Loading...</Text>
+        <Text style={styles.placeholder}>Loading...</Text>
       ) : sessions.length === 0 ? (
-        <Text style={styles.emptyText}>No sessions recorded on this day.</Text>
+        <EmptyState
+          icon={<CalendarIcon size={32} color={Colors.textMuted} />}
+          title="No sessions on this day"
+          subtitle="Pick another day or start a new session"
+        />
       ) : (
         <View style={styles.sessionList}>
-          {sessions.map((session) => (
-            <View key={session.id} style={styles.sessionCard}>
-              <View style={styles.sessionHeader}>
-                <Text style={styles.sessionTime}>
-                  {formatTime(new Date(session.startedAt))}
-                </Text>
-                {session.mood && (
-                  <Text style={styles.moodEmoji}>{MOOD_EMOJI[session.mood] ?? '😐'}</Text>
-                )}
-              </View>
-              <Text style={styles.intentText}>{session.intentText}</Text>
-              <Text style={styles.durationText}>
-                {session.completedAt ? `${session.durationMin} min` : 'Incomplete'}
-              </Text>
-              {session.reflectionText ? (
-                <Text style={styles.reflectionText}>{session.reflectionText}</Text>
-              ) : null}
-            </View>
-          ))}
+          {sessions.map((session) => {
+            const moodInfo = session.mood ? MOOD_ICONS[session.mood] : null;
+            return (
+              <DuoCard key={session.id} style={styles.sessionCard}>
+                <View style={styles.sessionHeader}>
+                  <View style={styles.timeRow}>
+                    <ClockIcon size={16} color={Colors.textMuted} />
+                    <Text style={styles.sessionTime}>
+                      {formatTime(new Date(session.startedAt))}
+                    </Text>
+                  </View>
+                  {moodInfo && (
+                    <moodInfo.Icon size={28} color={moodInfo.color} />
+                  )}
+                </View>
+                <Text style={styles.intentText}>{session.intentText}</Text>
+                <View style={styles.durationBadge}>
+                  <Text style={styles.durationText}>
+                    {session.completedAt ? `${session.durationMin} min` : 'Incomplete'}
+                  </Text>
+                </View>
+                {session.reflectionText ? (
+                  <View style={styles.reflectionBox}>
+                    <Text style={styles.reflectionText}>{session.reflectionText}</Text>
+                  </View>
+                ) : null}
+              </DuoCard>
+            );
+          })}
         </View>
       )}
     </ScrollView>
@@ -112,84 +135,113 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: Spacing.xxxl,
   },
   backButton: {
-    marginTop: Spacing.xxl,
+    marginTop: Spacing.xl,
     marginBottom: Spacing.md,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
     alignSelf: 'flex-start',
   },
-  backButtonText: {
-    ...Typography.body,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
-  title: {
-    ...Typography.title,
-    color: Colors.text,
+  dateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: Spacing.lg,
   },
+  dateIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 22,
+    fontWeight: '900',
+    color: Colors.text,
+  },
   summaryCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
     alignItems: 'center',
     marginBottom: Spacing.lg,
   },
   summaryValue: {
-    ...Typography.display,
+    fontSize: 48,
+    fontWeight: '900',
     color: Colors.primary,
   },
   summaryLabel: {
-    ...Typography.caption,
+    fontSize: 14,
+    fontWeight: '600',
     color: Colors.textLight,
-    marginTop: Spacing.xs,
+    marginTop: 4,
+  },
+  placeholder: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: Colors.textLight,
+    textAlign: 'center',
+    marginTop: Spacing.xl,
   },
   sessionList: {
     gap: Spacing.md,
   },
   sessionCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
+    padding: 20,
   },
   sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: 12,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   sessionTime: {
-    ...Typography.caption,
-    color: Colors.textLight,
-  },
-  moodEmoji: {
-    fontSize: 20,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textMuted,
   },
   intentText: {
-    ...Typography.subtitle,
+    fontSize: 18,
+    fontWeight: '700',
     color: Colors.text,
-    marginBottom: Spacing.xs,
+    marginBottom: 8,
+  },
+  durationBadge: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary + '15',
+    borderRadius: Radii.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 8,
   },
   durationText: {
-    ...Typography.body,
+    fontSize: 13,
+    fontWeight: '800',
     color: Colors.primary,
-    fontWeight: '600',
-    marginBottom: Spacing.sm,
+  },
+  reflectionBox: {
+    marginTop: 8,
+    backgroundColor: Colors.surface,
+    borderRadius: Radii.sm,
+    padding: 12,
   },
   reflectionText: {
-    ...Typography.body,
+    fontSize: 14,
+    fontWeight: '500',
     color: Colors.textLight,
-    marginTop: Spacing.sm,
-  },
-  emptyText: {
-    ...Typography.body,
-    color: Colors.textLight,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
+    lineHeight: 20,
   },
 });

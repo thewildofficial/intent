@@ -5,20 +5,63 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import * as Notifications from 'expo-notifications';
 import { Component, type ReactNode } from 'react';
-import { getBooleanSetting } from '../db/queries';
 import migrations from '../db/migrations/migrations';
-import { db } from '../db/db';
 import { useState, useEffect } from 'react';
 import { Colors, Spacing, Typography } from '../constants/theme';
+import { useDB } from '../db/client';
+import { settings } from '../db/schema';
+import { eq } from 'drizzle-orm';
+import { db } from '../db/db';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+} catch (e) {
+  console.log('Notifications not available in this environment:', e);
+}
+
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const db = useDB();
+  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const result = await db.select().from(settings).where(eq(settings.key, 'onboardingComplete'));
+        const raw = result[0]?.value ?? null;
+        const complete = raw === null ? false : raw === 'true';
+        if (mounted) {
+          setOnboardingComplete(complete);
+        }
+      } catch (e) {
+        console.error('Failed to check onboarding status:', e);
+        if (mounted) {
+          setOnboardingComplete(true);
+        }
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (onboardingComplete === false && pathname !== '/onboarding') {
+      router.replace('/onboarding');
+    }
+  }, [onboardingComplete, pathname]);
+
+  return <>{children}</>;
+}
 
 function MigrationGate({ children }: { children: React.ReactNode }) {
   const { success, error } = useMigrations(db, migrations);
@@ -43,7 +86,7 @@ function MigrationGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return children;
+  return <OnboardingGate>{children}</OnboardingGate>;
 }
 
 interface ErrorBoundaryState {
@@ -69,7 +112,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
     if (this.state.hasError) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>💥</Text>
           <Text style={styles.errorTitle}>Something went wrong</Text>
           <Text style={styles.errorMessage}>
             {this.state.error?.message ?? 'An unexpected error occurred.'}
@@ -91,36 +133,6 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
 }
 
 export default function RootLayout() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [onboardingComplete, setOnboardingComplete] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const complete = await getBooleanSetting('onboardingComplete', false);
-        if (mounted) {
-          setOnboardingComplete(complete);
-        }
-      } catch (e) {
-        console.error('Failed to check onboarding status:', e);
-        if (mounted) {
-          setOnboardingComplete(true);
-        }
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (onboardingComplete === false && pathname !== '/onboarding') {
-      router.replace('/onboarding');
-    }
-  }, [onboardingComplete, pathname]);
-
   return (
     <ErrorBoundary>
       <SQLiteProvider databaseName="intent.db">

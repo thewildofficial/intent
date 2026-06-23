@@ -1,8 +1,10 @@
 import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity } from 'react-native';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Radii } from '../../constants/theme';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useStreaks } from '../../hooks/useStreaks';
 import { useExport, type ExportFormat } from '../../hooks/useExport';
+import { SettingsIcon, FireIcon, BellIcon, DownloadIcon, TargetIcon } from '../../components/Icons';
+import { DuoCard, DuoButton } from '../../components/DuoButton';
 
 export default function SettingsScreen() {
   const { current } = useStreaks();
@@ -35,76 +37,129 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Settings</Text>
-
-      <View style={styles.streakCard}>
-        <Text style={styles.streakValue}>{current}</Text>
-        <Text style={styles.streakLabel}>Current streak days</Text>
+      {/* Title */}
+      <View style={styles.titleRow}>
+        <View style={styles.titleIconWrap}>
+          <SettingsIcon size={24} color={Colors.primary} />
+        </View>
+        <Text style={styles.title}>Settings</Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
+      {/* Streak card */}
+      <DuoCard style={styles.streakCard}>
+        <View style={styles.streakCardLeft}>
+          <View style={styles.streakIconWrap}>
+            <FireIcon size={28} color={Colors.flame} />
+          </View>
+          <View>
+            <Text style={styles.streakCardLabel}>Current streak</Text>
+            <Text style={styles.streakCardDays}>
+              {current} {current === 1 ? 'day' : 'days'}
+            </Text>
+          </View>
+        </View>
+      </DuoCard>
+
+      {/* Notifications section */}
+      <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+      <DuoCard style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <BellIcon size={20} color={Colors.secondary} />
+          <Text style={styles.sectionTitle}>Reminders</Text>
+        </View>
         {!permission.granted && (
           <Text style={styles.permissionHint}>
             Notification permission is required for reminders.
           </Text>
         )}
 
-        <View style={styles.setting}>
-          <Text style={styles.settingLabel}>Daily Reminder</Text>
-          <Switch
-            value={dailyReminderEnabled}
-            onValueChange={(v) => handleToggle(v, setDailyReminderEnabled)}
-            trackColor={{ false: Colors.border, true: Colors.primary }}
+        <SettingToggle
+          label="Daily Reminder"
+          value={dailyReminderEnabled}
+          onValueChange={(v) => handleToggle(v, setDailyReminderEnabled)}
+        />
+        <SettingToggle
+          label="Session Complete"
+          value={sessionCompleteEnabled}
+          onValueChange={(v) => handleToggle(v, setSessionCompleteEnabled)}
+        />
+        <SettingToggle
+          label="Streak Warning"
+          value={streakWarningEnabled}
+          onValueChange={(v) => handleToggle(v, setStreakWarningEnabled)}
+          last
+        />
+      </DuoCard>
+
+      {/* Export section */}
+      <Text style={styles.sectionLabel}>DATA EXPORT</Text>
+      <DuoCard style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <DownloadIcon size={20} color={Colors.accent} />
+          <Text style={styles.sectionTitle}>Export your data</Text>
+        </View>
+        <View style={styles.exportButtons}>
+          <DuoButton
+            label="Markdown"
+            onPress={() => handleExport('markdown')}
+            variant="primary"
+            size="sm"
+            fullWidth
+          />
+          <DuoButton
+            label="CSV"
+            onPress={() => handleExport('csv')}
+            variant="secondary"
+            size="sm"
+            fullWidth
+          />
+          <DuoButton
+            label="JSON"
+            onPress={() => handleExport('json')}
+            variant="accent"
+            size="sm"
+            fullWidth
           />
         </View>
+      </DuoCard>
 
-        <View style={styles.setting}>
-          <Text style={styles.settingLabel}>Session Complete</Text>
-          <Switch
-            value={sessionCompleteEnabled}
-            onValueChange={(v) => handleToggle(v, setSessionCompleteEnabled)}
-            trackColor={{ false: Colors.border, true: Colors.primary }}
-          />
+      {/* About */}
+      <Text style={styles.sectionLabel}>ABOUT</Text>
+      <DuoCard style={styles.aboutCard}>
+        <View style={styles.aboutRow}>
+          <TargetIcon size={28} color={Colors.primary} />
+          <View>
+            <Text style={styles.aboutTitle}>Intent</Text>
+            <Text style={styles.aboutText}>Commit to one thing. Focus. Reflect.</Text>
+          </View>
         </View>
-
-        <View style={styles.setting}>
-          <Text style={styles.settingLabel}>Streak Warning</Text>
-          <Switch
-            value={streakWarningEnabled}
-            onValueChange={(v) => handleToggle(v, setStreakWarningEnabled)}
-            trackColor={{ false: Colors.border, true: Colors.primary }}
-          />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data Export</Text>
-        <TouchableOpacity
-          style={[styles.exportButton, { backgroundColor: Colors.primary }]}
-          onPress={() => handleExport('markdown')}
-        >
-          <Text style={styles.exportButtonText}>Export as Markdown</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.exportButton, { backgroundColor: Colors.secondary }]}
-          onPress={() => handleExport('csv')}
-        >
-          <Text style={styles.exportButtonText}>Export as CSV</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.exportButton, { backgroundColor: Colors.accent }]}
-          onPress={() => handleExport('json')}
-        >
-          <Text style={[styles.exportButtonText, { color: Colors.text }]}>Export as JSON</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.aboutText}>Intent — Phase 3: Calendar Heatmap + Data Export</Text>
-      </View>
+      </DuoCard>
     </ScrollView>
+  );
+}
+
+// ── Toggle row component ──────────────────────────────────────
+function SettingToggle({
+  label,
+  value,
+  onValueChange,
+  last = false,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  last?: boolean;
+}) {
+  return (
+    <View style={[styles.setting, !last && styles.settingBorder]}>
+      <Text style={styles.settingLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: Colors.surfaceAlt, true: Colors.primary }}
+        thumbColor={Colors.white}
+      />
+    </View>
   );
 }
 
@@ -115,71 +170,117 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: Spacing.xxxl,
   },
-  title: {
-    ...Typography.title,
-    color: Colors.text,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginTop: Spacing.xxl,
     marginBottom: Spacing.xl,
   },
-  streakCard: {
+  titleIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
     alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: Spacing.lg,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.text,
+  },
+  streakCard: {
     marginBottom: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
-  streakValue: {
-    ...Typography.display,
-    color: Colors.primary,
+  streakCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  streakLabel: {
-    ...Typography.caption,
+  streakIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.flame + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakCardLabel: {
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.textLight,
-    marginTop: Spacing.xs,
+  },
+  streakCardDays: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: Colors.text,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 8,
+    marginLeft: 4,
   },
   section: {
     marginBottom: Spacing.xl,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
   sectionTitle: {
-    ...Typography.subtitle,
+    fontSize: 16,
+    fontWeight: '800',
     color: Colors.text,
-    marginBottom: Spacing.md,
   },
   permissionHint: {
-    ...Typography.caption,
+    fontSize: 13,
+    fontWeight: '500',
     color: Colors.error,
-    marginBottom: Spacing.md,
+    marginBottom: 12,
   },
   setting: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: 14,
+  },
+  settingBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.borderLight,
   },
   settingLabel: {
-    ...Typography.body,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.text,
+  },
+  exportButtons: {
+    gap: 10,
+  },
+  aboutCard: {
+    marginBottom: Spacing.xl,
+  },
+  aboutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  aboutTitle: {
+    fontSize: 20,
+    fontWeight: '900',
     color: Colors.text,
   },
   aboutText: {
-    ...Typography.body,
+    fontSize: 14,
+    fontWeight: '500',
     color: Colors.textLight,
-  },
-  exportButton: {
-    borderRadius: 12,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-  },
-  exportButtonText: {
-    ...Typography.subtitle,
-    color: Colors.white,
-    fontWeight: '600',
+    marginTop: 2,
   },
 });

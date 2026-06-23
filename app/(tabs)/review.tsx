@@ -1,14 +1,16 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useEffect, useState, useCallback } from 'react';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Radii } from '../../constants/theme';
 import { SessionTimeline } from '../../components/SessionTimeline';
 import { getTodaySessions } from '../../db/queries';
 import type { sessions } from '../../db/schema';
+import { ReviewIcon, ClockIcon, TargetIcon } from '../../components/Icons';
+import { DuoCard, EmptyState } from '../../components/DuoButton';
 
 type SessionRow = typeof sessions.$inferSelect;
 
 function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return `${minutes}m`;
   const hours = Math.floor(minutes / 60);
   const remaining = minutes % 60;
   return remaining > 0 ? `${hours}h ${remaining}m` : `${hours}h`;
@@ -33,26 +35,47 @@ export default function ReviewScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Today's Review</Text>
-
-      <View style={styles.summary}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{sessions.length}</Text>
-          <Text style={styles.summaryLabel}>Sessions</Text>
+      {/* Title */}
+      <View style={styles.titleRow}>
+        <View style={styles.titleIconWrap}>
+          <ReviewIcon size={24} color={Colors.primary} />
         </View>
-        <View style={styles.divider} />
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryValue}>{formatDuration(totalMinutes)}</Text>
-          <Text style={styles.summaryLabel}>Total time</Text>
-        </View>
+        <Text style={styles.title}>Today's Review</Text>
       </View>
 
+      {/* Summary cards */}
+      <View style={styles.summaryRow}>
+        <DuoCard style={styles.summaryCard}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: Colors.primary + '18' }]}>
+            <TargetIcon size={24} color={Colors.primary} />
+          </View>
+          <Text style={styles.summaryValue}>{sessions.length}</Text>
+          <Text style={styles.summaryLabel}>Sessions</Text>
+        </DuoCard>
+
+        <DuoCard style={styles.summaryCard}>
+          <View style={[styles.summaryIconWrap, { backgroundColor: Colors.secondary + '18' }]}>
+            <ClockIcon size={24} color={Colors.secondary} />
+          </View>
+          <Text style={styles.summaryValue}>{formatDuration(totalMinutes)}</Text>
+          <Text style={styles.summaryLabel}>Total time</Text>
+        </DuoCard>
+      </View>
+
+      {/* Session list */}
       {loading ? (
         <Text style={styles.placeholder}>Loading...</Text>
       ) : sessions.length === 0 ? (
-        <Text style={styles.placeholder}>No sessions yet today.</Text>
+        <EmptyState
+          icon={<TargetIcon size={32} color={Colors.textMuted} />}
+          title="No sessions yet today"
+          subtitle="Start your first session to see it here"
+        />
       ) : (
-        <SessionTimeline sessions={sessions} />
+        <View style={styles.timelineWrapper}>
+          <Text style={styles.sectionLabel}>SESSIONS</Text>
+          <SessionTimeline sessions={sessions} />
+        </View>
       )}
     </ScrollView>
   );
@@ -65,47 +88,72 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: Spacing.xxxl,
   },
-  title: {
-    ...Typography.title,
-    color: Colors.text,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginTop: Spacing.xxl,
     marginBottom: Spacing.xl,
   },
-  summary: {
-    flexDirection: 'row',
+  titleIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
     alignItems: 'center',
-    justifyContent: 'space-evenly',
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    justifyContent: 'center',
   },
-  summaryItem: {
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.text,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
+  },
+  summaryCard: {
+    flex: 1,
     alignItems: 'center',
+    padding: 20,
+  },
+  summaryIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
   },
   summaryValue: {
-    ...Typography.subtitle,
-    color: Colors.primary,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.text,
   },
   summaryLabel: {
-    ...Typography.caption,
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.textLight,
-    marginTop: Spacing.xs,
-  },
-  divider: {
-    width: 1,
-    height: 40,
-    backgroundColor: Colors.border,
+    marginTop: 4,
   },
   placeholder: {
-    ...Typography.body,
+    fontSize: 16,
+    fontWeight: '500',
     color: Colors.textLight,
     textAlign: 'center',
     marginTop: Spacing.xl,
+  },
+  timelineWrapper: {
+    marginTop: 8,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: Colors.textMuted,
+    letterSpacing: 1.2,
+    marginBottom: 12,
   },
 });

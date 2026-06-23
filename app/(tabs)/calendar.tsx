@@ -1,24 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography } from '../../constants/theme';
+import { Colors, Spacing, Radii } from '../../constants/theme';
 import { getSessionsForDateRange, getLocalDateString } from '../../db/queries';
+import { ArrowLeftIcon, ArrowRightIcon, CalendarIcon } from '../../components/Icons';
 
-type SessionRow = {
-  id: number;
-  intentText: string;
-  durationMin: number;
-  startedAt: Date;
-  completedAt: Date | null;
-  mood: string | null;
-};
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MS_PER_DAY = 86400000;
-
-function getDateKey(d: Date): string {
-  return getLocalDateString(d);
-}
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const HEAT_COLORS = [Colors.heat0, Colors.heat1, Colors.heat2, Colors.heat3, Colors.heat4];
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -35,11 +23,18 @@ function addMonths(d: Date, months: number): Date {
 }
 
 function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
+  return a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+    a.getDate() === b.getDate();
+}
+
+function getHeatColor(minutes: number, maxMinutes: number): string {
+  if (minutes === 0 || maxMinutes === 0) return HEAT_COLORS[0];
+  const ratio = minutes / maxMinutes;
+  if (ratio < 0.25) return HEAT_COLORS[1];
+  if (ratio < 0.5) return HEAT_COLORS[2];
+  if (ratio < 0.75) return HEAT_COLORS[3];
+  return HEAT_COLORS[4];
 }
 
 export default function CalendarScreen() {
@@ -55,7 +50,7 @@ export default function CalendarScreen() {
 
     const totals: Record<string, number> = {};
     for (const session of sessions) {
-      const key = getDateKey(new Date(session.startedAt));
+      const key = getLocalDateString(new Date(session.startedAt));
       totals[key] = (totals[key] ?? 0) + (session.completedAt ? session.durationMin : 0);
     }
     setMinutesByDate(totals);
@@ -74,7 +69,6 @@ export default function CalendarScreen() {
   const month = currentMonth.getMonth();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-
   const maxMinutes = Math.max(1, ...Object.values(minutesByDate));
 
   const weeks: (Date | null)[][] = [];
@@ -88,54 +82,52 @@ export default function CalendarScreen() {
     }
   }
   if (currentWeek.length > 0) {
-    while (currentWeek.length < 7) {
-      currentWeek.push(null);
-    }
+    while (currentWeek.length < 7) currentWeek.push(null);
     weeks.push(currentWeek);
   }
 
-  const intensityColor = (minutes: number): string => {
-    if (minutes === 0) return Colors.border;
-    const ratio = Math.min(minutes / maxMinutes, 1);
-    const r = Math.round(88 + (107 - 88) * (1 - ratio));
-    const g = Math.round(226 + (204 - 226) * (1 - ratio));
-    const b = Math.round(25 + (2 - 25) * (1 - ratio));
-    return `rgb(${r}, ${g}, ${b})`;
-  };
-
   const handleDayPress = (date: Date) => {
-    const key = getDateKey(date);
+    const key = getLocalDateString(date);
     router.push(`/day/${key}`);
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Calendar</Text>
+      {/* Title */}
+      <View style={styles.titleRow}>
+        <View style={styles.titleIconWrap}>
+          <CalendarIcon size={24} color={Colors.primary} />
+        </View>
+        <Text style={styles.title}>Calendar</Text>
+      </View>
 
-      <View style={styles.header}>
+      {/* Month navigation */}
+      <View style={styles.monthNav}>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => setCurrentMonth((m) => addMonths(m, -1))}
         >
-          <Text style={styles.navButtonText}>←</Text>
+          <ArrowLeftIcon size={24} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.monthLabel}>{monthLabel}</Text>
         <TouchableOpacity
           style={styles.navButton}
           onPress={() => setCurrentMonth((m) => addMonths(m, 1))}
         >
-          <Text style={styles.navButtonText}>→</Text>
+          <ArrowRightIcon size={24} color={Colors.primary} />
         </TouchableOpacity>
       </View>
 
+      {/* Calendar grid */}
       <View style={styles.grid}>
-        <View style={styles.weekRow}>
-          {WEEKDAYS.map((day) => (
-            <Text key={day} style={styles.weekdayHeader}>
-              {day}
-            </Text>
+        {/* Weekday headers */}
+        <View style={styles.weekHeaderRow}>
+          {WEEKDAYS.map((day, i) => (
+            <Text key={i} style={styles.weekdayHeader}>{day}</Text>
           ))}
         </View>
+
+        {/* Day cells */}
         {weeks.map((week, weekIndex) => (
           <View key={weekIndex} style={styles.weekRow}>
             {week.map((date, dayIndex) => {
@@ -143,25 +135,30 @@ export default function CalendarScreen() {
                 return <View key={`${weekIndex}-${dayIndex}`} style={styles.emptyCell} />;
               }
 
-              const key = getDateKey(date);
+              const key = getLocalDateString(date);
               const minutes = minutesByDate[key] ?? 0;
               const isToday = isSameDay(date, today);
+              const heatColor = getHeatColor(minutes, maxMinutes);
+              const hasActivity = minutes > 0;
 
               return (
                 <TouchableOpacity
                   key={key}
                   style={[
                     styles.dayCell,
-                    { backgroundColor: intensityColor(minutes) },
+                    { backgroundColor: heatColor },
                     isToday && styles.todayCell,
                   ]}
                   onPress={() => handleDayPress(date)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.dayText, minutes > 0 && styles.activeDayText]}>
+                  <Text style={[
+                    styles.dayText,
+                    hasActivity && styles.activeDayText,
+                  ]}>
                     {date.getDate()}
                   </Text>
-                  {minutes > 0 && (
+                  {hasActivity && (
                     <Text style={styles.minuteText}>{minutes}m</Text>
                   )}
                 </TouchableOpacity>
@@ -171,22 +168,15 @@ export default function CalendarScreen() {
         ))}
       </View>
 
+      {/* Legend */}
       <View style={styles.legend}>
-        <Text style={styles.legendLabel}>Less intentional</Text>
+        <Text style={styles.legendLabel}>Less</Text>
         <View style={styles.legendDots}>
-          {[0.0, 0.25, 0.5, 0.75, 1.0].map((ratio) => (
-            <View
-              key={ratio}
-              style={[
-                styles.legendDot,
-                {
-                  backgroundColor: intensityColor(Math.round(ratio * maxMinutes) || 0),
-                },
-              ]}
-            />
+          {HEAT_COLORS.map((color, i) => (
+            <View key={i} style={[styles.legendDot, { backgroundColor: color }]} />
           ))}
         </View>
-        <Text style={styles.legendLabel}>More intentional</Text>
+        <Text style={styles.legendLabel}>More</Text>
       </View>
     </ScrollView>
   );
@@ -199,54 +189,72 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    paddingBottom: Spacing.xxxl,
   },
-  title: {
-    ...Typography.title,
-    color: Colors.text,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginTop: Spacing.xxl,
     marginBottom: Spacing.xl,
   },
-  header: {
+  titleIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: Colors.text,
+  },
+  monthNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.lg,
   },
-  monthLabel: {
-    ...Typography.subtitle,
-    color: Colors.text,
-  },
   navButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  navButtonText: {
-    ...Typography.subtitle,
-    color: Colors.primary,
+  monthLabel: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: Colors.text,
   },
   grid: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderRadius: Radii.lg,
+    borderWidth: 2,
+    borderColor: Colors.borderLight,
     padding: Spacing.md,
   },
-  weekRow: {
+  weekHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
+    marginBottom: 8,
   },
   weekdayHeader: {
     flex: 1,
     textAlign: 'center',
-    ...Typography.caption,
-    color: Colors.textLight,
-    marginBottom: Spacing.xs,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.textMuted,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   dayCell: {
     flex: 1,
@@ -255,12 +263,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
   },
   todayCell: {
+    borderWidth: 3,
     borderColor: Colors.secondary,
-    borderWidth: 2,
   },
   emptyCell: {
     flex: 1,
@@ -268,15 +274,17 @@ const styles = StyleSheet.create({
     margin: 2,
   },
   dayText: {
-    ...Typography.body,
-    color: Colors.text,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.textLight,
   },
   activeDayText: {
     color: Colors.white,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   minuteText: {
-    ...Typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
     color: Colors.white,
     marginTop: 2,
   },
@@ -285,19 +293,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.lg,
+    gap: 8,
   },
   legendLabel: {
-    ...Typography.caption,
+    fontSize: 13,
+    fontWeight: '600',
     color: Colors.textLight,
   },
   legendDots: {
     flexDirection: 'row',
-    marginHorizontal: Spacing.sm,
+    gap: 4,
   },
   legendDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    marginHorizontal: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
 });

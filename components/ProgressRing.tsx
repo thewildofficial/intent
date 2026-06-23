@@ -53,14 +53,16 @@ export function ProgressRing({
   return (
     <View style={[styles.container, { width: size, height: size }, style]}>
       <Svg width={size} height={size}>
+        {/* Background track */}
         <Circle
           cx={center}
           cy={center}
           r={radius}
-          stroke={Colors.border}
+          stroke={Colors.surfaceAlt}
           strokeWidth={strokeWidth}
           fill="none"
         />
+        {/* Progress arc */}
         <AnimatedCircle
           cx={center}
           cy={center}
