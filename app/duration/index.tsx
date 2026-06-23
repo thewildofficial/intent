@@ -6,12 +6,12 @@ import { buttonPress } from '../../utils/haptics';
 import { ArrowLeftIcon, BoltIcon, ClockIcon, FireIcon, TargetIcon, TrophyIcon, SparkleIcon, HeartIcon } from '../../components/Icons';
 
 const DURATIONS = [
-  { min: 10, icon: BoltIcon,    colorKey: 'accent',    label: 'Quick',     prompt: 'Warm up' },
-  { min: 15, icon: ClockIcon,   colorKey: 'secondary', label: 'Short',     prompt: 'Dip in' },
+  { min: 10, icon: BoltIcon,    colorKey: 'accent',    label: 'Quick',     prompt: 'Warm up', recommended: false },
+  { min: 15, icon: ClockIcon,   colorKey: 'secondary', label: 'Short',     prompt: 'Dip in',  recommended: false },
   { min: 25, icon: SparkleIcon, colorKey: 'primary',   label: 'Pomodoro',  prompt: 'Classic', recommended: true },
-  { min: 30, icon: TargetIcon,  colorKey: 'primary',   label: 'Focused',   prompt: 'Lock in' },
-  { min: 45, icon: FireIcon,    colorKey: 'flame',      label: 'Deep',      prompt: 'Grind' },
-  { min: 60, icon: TrophyIcon,  colorKey: 'flame',      label: 'Full',      prompt: 'All in' },
+  { min: 30, icon: TargetIcon,  colorKey: 'primary',   label: 'Focused',   prompt: 'Lock in', recommended: false },
+  { min: 45, icon: FireIcon,    colorKey: 'flame',      label: 'Deep',      prompt: 'Grind',  recommended: false },
+  { min: 60, icon: TrophyIcon,  colorKey: 'flame',      label: 'Full',      prompt: 'All in', recommended: false },
 ] as const;
 
 export default function DurationScreen() {
