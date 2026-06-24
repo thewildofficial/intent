@@ -101,7 +101,11 @@ function ThemeSync({ themeMode }: { themeMode: 'light' | 'dark' }) {
   const Colors = useColors();
 
   useEffect(() => {
-    SystemUI.setBackgroundColorAsync(Colors.background);
+    try {
+      SystemUI.setBackgroundColorAsync(Colors.background);
+    } catch {
+      // edge-to-edge mode doesn't support system UI background — safe to ignore
+    }
 
     if (Platform.OS === 'android') {
       try {
